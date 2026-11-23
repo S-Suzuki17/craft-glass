@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f6faf8">
+  <title>Craft Glass — Proof of Real Human Effort</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" href="./assets/stamps/checked.png">
+  <link rel="stylesheet" href="./styles/app.css">
+  <script type="module" src="./src/app.js"></script>
+</head>
+<body>
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+
+  <div class="app-layout">
+    <aside class="sidebar glass" aria-label="Primary Navigation">
+      <div class="brand">
+        <span class="brand-mark">C</span>
+        <div>
+          <strong>Craft Glass</strong>
+          <small id="brand-tagline">Proof of real human effort</small>
+        </div>
+      </div>
+      <nav id="desktop-nav" class="desktop-nav"></nav>
+      <div class="sidebar-footer">
+        <span id="sidebar-points" class="pill-badge">0 pt</span>
+        <span id="sidebar-level" class="pill-badge muted-pill">Lv.1</span>
+      </div>
+    </aside>
+
+    <div class="main-shell">
+      <header class="topbar glass">
+        <div class="mobile-brand">
+          <span class="brand-mark small">C</span>
+          <strong>Craft Glass</strong>
+        </div>
+        <div class="topbar-meta">
+          <span id="top-blessing-pill" class="blessing-pill" hidden></span>
+          <span id="top-points-pill" class="pill-badge">0 pt</span>
+          <button type="button" id="lang-toggle-btn" class="icon-btn" aria-label="Switch Language">EN / JP</button>
+          <button type="button" id="guide-open-btn" class="icon-btn" aria-label="Guide">?</button>
+        </div>
+      </header>
+
+      <main id="app-main" class="app-main" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <nav id="mobile-nav" class="mobile-nav glass" aria-label="Bottom Navigation"></nav>
+
+  <div id="focus-overlay" class="focus-overlay" hidden></div>
+  <dialog id="app-dialog" class="app-dialog glass"></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

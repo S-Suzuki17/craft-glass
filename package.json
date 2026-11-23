@@ -1,0 +1,16 @@
+{
+  "name": "craft-glass",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync:assets": "node tools/sync-assets.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "serve": "node tools/serve.mjs",
+    "graphics": "node tools/generate-store-graphics.mjs",
+    "build:android": "node tools/build-android.mjs"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

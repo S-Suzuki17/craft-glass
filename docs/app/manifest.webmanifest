@@ -1,0 +1,16 @@
+{
+  "name": "Craft Glass",
+  "short_name": "Craft Glass",
+  "description": "Anti-AI-hype weekly pool habit & study RPG with blurred desk timelapses and real human blessings.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f6faf8",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "./assets/stamps/checked.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    }
+  ]
+}

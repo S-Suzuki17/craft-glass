@@ -1,0 +1,752 @@
+// Complete bilingual dictionary (English default & Japanese) for Craft Glass
+
+export const SUPPORTED_LOCALES = Object.freeze(['en', 'ja']);
+
+const DICT = {
+  en: {
+    appName: 'Craft Glass',
+    tagline: 'Proof of real human effort',
+    tabs: {
+      pool: 'Pool',
+      focus: 'Focus',
+      guild: 'Guild',
+      proof: 'Proof',
+      insights: 'Insights'
+    },
+    common: {
+      save: 'Save',
+      cancel: 'Cancel',
+      close: 'Close',
+      delete: 'Delete',
+      edit: 'Edit',
+      done: 'Done',
+      copy: 'Copy',
+      copied: 'Copied!',
+      share: 'Share',
+      export: 'Export',
+      import: 'Import',
+      add: 'Add',
+      start: 'Start',
+      pause: 'Pause',
+      resume: 'Resume',
+      finish: 'Finish',
+      confirm: 'Confirm',
+      back: 'Back',
+      all: 'All',
+      none: 'None',
+      today: 'Today',
+      thisWeek: 'This Week',
+      minutesShort: '{n}m',
+      hoursMinutes: '{h}h {m}m',
+      daysCount: '{n}d',
+      points: '{n} pt',
+      level: 'Lv.{n}'
+    },
+    units: {
+      min: 'min',
+      pages: 'pages',
+      problems: 'problems',
+      sessions: 'sessions'
+    },
+    categories: {
+      study: 'Study',
+      coding: 'Build & Code',
+      language: 'Language',
+      reading: 'Reading',
+      art: 'Art & Craft',
+      music: 'Music',
+      fitness: 'Body & Mind',
+      other: 'Other Craft'
+    },
+    weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    weekdaysSunFirst: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    onboarding: {
+      welcomeTitle: 'Welcome to Craft Glass',
+      welcomeBody:
+        'AI can generate apps, streaks, and hollow praise in seconds. Craft Glass protects what cannot be automated: your real hours, blurred desk timelapses, and genuine blessings from real people.',
+      chooseLang: 'Language',
+      chooseStarter: 'Pick a starter pack (optional)',
+      blankStart: 'Start empty',
+      blankDesc: 'Create your own weekly pools and decks from scratch.',
+      enterGuild: 'Enter the Guild',
+      starterTemplates: {
+        study: {
+          name: 'Deep Study & Exams',
+          desc: 'Weekly study pools + core memory recall cards.'
+        },
+        language: {
+          name: 'Language Fluency',
+          desc: 'Immersion minutes, reading pages & spaced repetition.'
+        },
+        builder: {
+          name: 'Indie Builder & Coding',
+          desc: 'Ship real craft without cramming or burnout.'
+        },
+        mindful: {
+          name: 'Balanced Daily Craft',
+          desc: 'Reading, sketching, music, or steady creative work.'
+        }
+      }
+    },
+    pool: {
+      title: 'Weekly Pool',
+      subtitle: 'Manage weekly total volume — skip days guilt-free, finish without cramming.',
+      weeklyStreak: 'Weekly Streak',
+      streakDesc: '{n} consecutive weeks at 80%+ completion (skipping a day never breaks it)',
+      weeklyCompletion: 'Pool Completion',
+      addTask: '+ New Pool Goal',
+      taskTitle: 'Goal title',
+      taskTitlePlaceholder: 'e.g., Linear Algebra Problem Set, Read Clean Code',
+      category: 'Category',
+      targetAmount: 'Weekly target',
+      unit: 'Unit',
+      chunkSize: 'Chunk size (auto-split)',
+      pinDays: 'Pin soft focus days (no daily penalty)',
+      createGoal: 'Add to Weekly Pool',
+      empty: 'No weekly goals yet. Add one above or pick a starter pack in Settings.',
+      chunksLabel: 'Chunks ({done}/{total})',
+      remainingLabel: 'Remaining: {n} {unit}',
+      completedBadge: 'Pool Complete',
+      earlyBadge: 'Early Finish Bonus!',
+      focusThis: 'Focus',
+      logManual: '+ Log Offline',
+      manualTitle: 'Log Offline Craft',
+      manualAmount: 'Progress amount ({unit})',
+      manualMinutes: 'Duration (minutes)',
+      manualNote: 'Reflection / Question note (optional)',
+      milestonesTitle: 'Goal Countdowns',
+      addMilestone: '+ Add Target Date',
+      milestoneName: 'Milestone name',
+      milestoneDate: 'Target date',
+      daysLeft: '{n}d left',
+      dueToday: 'Today!',
+      passed: 'Passed',
+      unitSummaries: 'Totals by Unit (never mixed)'
+    },
+    focus: {
+      title: 'Focus Room',
+      linkedGoal: 'Linked Pool Goal (optional)',
+      noGoal: 'Free Focus Session',
+      modeStopwatch: 'Stopwatch',
+      modePomodoro: '25m Pomodoro',
+      modeDeep: '50m Deep Craft',
+      cameraTitle: 'Desk Camera Timelapse',
+      cameraHint: 'Optional real-effort capture. Blur is baked BEFORE saving frames locally.',
+      cameraEnable: 'Enable Desk Camera',
+      cameraDisable: 'Use Pixel Room',
+      blurOff: 'Clear',
+      blurSoft: 'Soft Blur',
+      blurHeavy: 'Silhouette',
+      roomBackdrop: 'Study Room Theme',
+      ambientSound: 'Ambient Sound',
+      ambientOff: 'Silent',
+      ambientRain: 'Gentle Rain',
+      ambientBrown: 'Warm Noise',
+      ambientDrone: 'Lo-fi Pad',
+      startSession: 'Start Craft Session',
+      flipCamera: 'Flip Cam',
+      elapsed: 'Elapsed',
+      targetRemain: 'Session Goal',
+      justWatchNote: 'Pure focus view — no tap clutter. Your companion grows alongside you.',
+      finishSession: 'Finish & Record',
+      abandonShort: 'Cancel (<1 min)',
+      summaryTitle: 'Craft Recorded!',
+      summaryExp: '+{exp} EXP earned (1 min = 1 EXP)',
+      summaryFrames: '{n} blurred timelapse frames captured locally',
+      summaryCorrectionHint: 'Forgot to pause? Adjust your true duration below — rewards stay honest.',
+      trueDurationMin: 'True duration (min)',
+      applyCorrection: 'Apply Honest Time Correction',
+      correctionApplied: 'Time adjusted honestly to {min}m. EXP & rewards reconciled.',
+      gemAppeared: 'A {name} ({mineral}) appeared on the road! Claim it during your Break.',
+      openBreak: 'Take 5m Break & Claim Gem',
+      breakTitle: '5-Minute Camp Break',
+      breakDesc: 'Rest your eyes. Gems found on the trail can only be claimed right here.',
+      claimGem: 'Claim +{pt} pt',
+      gemClaimed: 'Gem collected! +{pt} pt (Today {earned}/{cap} pt)',
+      skipBreak: 'Return to Guild',
+      progressAdd: 'Log progress for "{title}" (+{unit})'
+    },
+    guild: {
+      title: 'Hero & Guild',
+      rankCard: 'Guild Chronicle (400h Journey)',
+      nextRank: 'Next: {rank} — {title} ({remaining} remaining)',
+      maxRank: 'Max Rank Reached — Living Legend!',
+      expeditionTitle: 'Weekly Expedition Chest',
+      expeditionDesc: 'Max 90 min/day counts toward expedition to reward steady pacing over cramming.',
+      effectiveWeek: '{eff} / 5h effective ({days}/7 active days)',
+      campBonusActive: 'Camp Bonus Active (+10 pt): 4+ active days or early pool finish!',
+      campBonusLocked: 'Camp Bonus (+10 pt): study/craft 4+ days or finish a goal 2+ days early',
+      claimExpedition: 'Open Expedition Chest (+{pt} pt)',
+      expeditionClaimed: 'Claimed this week: {pt} pt',
+      companionTitle: 'Companions & Bond',
+      companionHint: 'Bond grows purely from real focus minutes spent together.',
+      selectCompanion: 'Set Partner',
+      activeCompanion: 'Active Partner',
+      wardrobeTitle: 'Craft Points Shop & Wardrobe',
+      wardrobeDesc: 'Balance: {pt} pt — Every piece is earned by real effort, zero microtransactions.',
+      equipped: 'Equipped',
+      owned: 'Owned — Equip',
+      unlock: 'Unlock ({cost} pt)',
+      notEnoughPt: 'Need {cost} pt',
+      sealedTitle: 'Sealed Monsters (Spaced Recall & Neglected Habits)',
+      sealedDesc: 'Overdue FSRS cards or mid-week neglected pools appear here. Re-seal them to earn +2 pt (max 10 pt/day).',
+      claimSeals: 'Claim Seal Rewards (+{pt} pt)',
+      reviewCard: 'Review Deck',
+      focusNeglected: 'Resume Pool',
+      noSealed: 'All monsters stay sealed! Your memory & weekly pools are in balance.',
+      gemsShelfTitle: 'Break Gems Shelf',
+      worldLabel: 'World {n}: {name}'
+    },
+    fsrs: {
+      title: 'Memory Forge (FSRS)',
+      newCard: '+ Add Flashcard',
+      front: 'Prompt / Front',
+      back: 'Answer / Back',
+      deck: 'Deck',
+      dueNow: '{n} due now',
+      startReview: 'Review Due Cards',
+      showAnswer: 'Reveal Answer',
+      again: 'Again',
+      hard: 'Hard',
+      good: 'Good',
+      easy: 'Easy',
+      allCaughtUp: 'No cards due right now! Great retention.',
+      dueToday: 'Due today',
+      dueTomorrow: 'Due tomorrow',
+      dueDays: 'In {d} days'
+    },
+    proof: {
+      title: 'Proof & Human Blessings',
+      subtitle: 'Cryptographic ledger of real craft + verifiable blessings from real humans.',
+      cardTitle: 'Weekly Proof Card (1080px PNG)',
+      cardDesc: 'A tamper-evident weekly summary card with daily bars, categories, hero rank, and Craft Hash.',
+      generateCard: 'Generate Weekly Proof Card',
+      savePng: 'Save PNG',
+      shareCard: 'Share Card',
+      displayNameLabel: 'Display name on card (optional)',
+      noteLabel: 'Craft reflection (optional)',
+      pactTitle: 'Human Blessing Pact (Anti-AI Praise)',
+      pactDesc: 'No fake AI cheerleaders. Send your Proof Pact Code to a friend, buddy, or mentor; their signed stamp unlocks a 7-day aura on your hero.',
+      createPact: 'Generate My Proof Pact Code',
+      copyPact: 'Copy Pact Code',
+      verifyPartnerTitle: 'Verify & Stamp a Friend’s Pact',
+      pastePact: 'Paste friend’s CGP1:... Pact Code',
+      inspectPact: 'Inspect Pact',
+      yourName: 'Your name',
+      pickStamp: 'Choose Blessing Stamp',
+      blessingNote: 'Short message (max 80 chars)',
+      issueBlessing: 'Create Blessing Code',
+      redeemTitle: 'Redeem Blessing From a Friend',
+      pasteBlessing: 'Paste CGB1:... Blessing Code',
+      redeemBtn: 'Ignite 7-Day Aura',
+      activeBlessing: 'Active Blessing: {title} (from {sender}, {days}d left)',
+      noBlessing: 'No active human blessing yet. Exchange a Pact Code with someone real!',
+      timelapseTitle: 'Local Timelapse Chronicle',
+      noTimelapses: 'No camera timelapses saved yet. Turn on Desk Camera in Focus Room to record one.',
+      play: 'Play',
+      exportWebm: 'Export Video',
+      ledgerTitle: 'SHA-256 Proof Ledger (Recent Entries)',
+      verifyChain: 'Verify Integrity',
+      chainValid: 'Hash chain verified ({n} entries intact)',
+      chainInvalid: 'Hash mismatch detected!'
+    },
+    insights: {
+      title: 'Chronicle & Settings',
+      heatmapTitle: '90-Day Effort Heatmap',
+      categoryTitle: 'Category Breakdown',
+      recentLogs: 'Recent Craft Logs',
+      correctBtn: 'Adjust Time',
+      settingsTitle: 'Preferences & Data Ownership',
+      languageLabel: 'Language',
+      weekStartLabel: 'Week starts on',
+      weekMon: 'Monday (ISO)',
+      weekSun: 'Sunday',
+      soundEffects: 'UI Sound Effects (CC0)',
+      reducedMotion: 'Reduced Motion',
+      backupTitle: '100% Local Data Ownership',
+      backupDesc: 'Zero server lock-in. Export or restore your entire Craft Glass JSON archive anytime.',
+      exportJson: 'Export Full Backup (.json)',
+      importJson: 'Import Backup (.json)',
+      importConfirm: 'Backup restored successfully!',
+      importError: 'Invalid backup file.',
+      guideBtn: 'Craft Guide & Credits',
+      privacyLink: 'Privacy Policy'
+    },
+    guide: {
+      title: 'How Craft Glass Works',
+      sections: [
+        ['1. Why Craft Glass?', 'Anyone can ask AI to generate a checklist or fake streak today. Craft Glass measures real minutes, blurred physical desk timelapses, and real human encouragement.'],
+        ['2. Weekly Pool & Anti-Cramming', 'Set weekly totals instead of rigid daily quotas. Up to 90 min/day count toward your Weekly Expedition Chest so steady pacing beats last-minute cramming.'],
+        ['3. Break Gems & Honest Time', 'Sessions of 5+ minutes spawn a Break Gem you can only pick up on the 5-minute Break screen. Forgot to stop the timer? Adjust it anytime — EXP and points automatically reconcile honestly.'],
+        ['4. Human Blessing Pacts', 'Share your CGP1 Pact Code with a real person. When they inspect your week and return a CGB1 Blessing Code, your hero gains a 7-day aura. Self-blessing and code replay are blocked.'],
+        ['5. Open Credits', 'Sound effects by Kenney (CC0 1.0 Universal). Ambient noise synthesized locally via Web Audio API. Original pixel artwork & stamps from the Study Glass lineage.']
+      ]
+    },
+    errors: {
+      invalidPact: 'Invalid Pact Code. Check that the entire CGP1:... string was copied.',
+      invalidBlessing: 'Invalid Blessing Code. Check the CGB1:... string.',
+      selfBlessing: 'You cannot bless your own Pact Code — ask a real friend or buddy!',
+      wrongProofHash: 'This Blessing Code does not match any Proof Pact in your ledger.',
+      replayBlessing: 'This Blessing Code has already been redeemed.',
+      invalidInput: 'Please fill in all required fields.'
+    },
+    ranks: [
+      ['Novice', 'Guild Initiate'],
+      ['Rank G', 'Gate Applicant'],
+      ['Rank F', 'Fledgling Crafter'],
+      ['Rank F+', 'Herb Gatherer'],
+      ['Rank E', 'Apprentice Wanderer'],
+      ['Rank E+', 'Trail Scout'],
+      ['Rank D', 'Journeyman'],
+      ['Rank D+', 'Frontier Pioneer'],
+      ['Rank C', 'Seasoned Adventurer'],
+      ['Rank C+', 'Town Stalwart'],
+      ['Rank B-', 'Vanguard Striker'],
+      ['Rank B', 'Veteran Artisan'],
+      ['Rank B+', 'Labyrinth Walker'],
+      ['Rank A-', 'Guild Banneret'],
+      ['Rank A', 'Master Crafter'],
+      ['Rank A+', 'Realm Champion'],
+      ['Rank S-', 'Calamity Breaker'],
+      ['Rank S', 'Renowned Hero'],
+      ['Rank S+', 'Warden of the Realm'],
+      ['Rank SS', 'Grand Tactician'],
+      ['Rank SS+', 'Abyssal Conqueror'],
+      ['Rank SSS', 'Continental Sovereign'],
+      ['Rank EX', 'Transcendent'],
+      ['Mythic', 'Living Myth'],
+      ['Hall of Fame', 'Living Legend (Grandmaster)']
+    ],
+    stamps: {
+      'well-done': 'Well done!',
+      checked: 'Witnessed!',
+      thinking: 'Thinking of your craft!',
+      applaud: 'Real effort honored!',
+      cheer: 'Cheering you on!',
+      retry: 'Keep steady & review!',
+      explain: 'Let’s unpack this!',
+      together: 'Rooting beside you!',
+      progress: 'Massive stride!',
+      'thanks-work': 'Good honest work!',
+      early: 'Finished ahead of pace!',
+      'question-thanks': 'Great curiosity!'
+    },
+    blessings: {
+      gold: { title: 'Golden Honor Aura', desc: 'Kindled by a friend honoring your real, honest effort.' },
+      emerald: { title: 'Emerald Wind Aura', desc: 'Kindled by a friend cheering your steady weekly rhythm.' },
+      sky: { title: 'Cerulean Witness Aura', desc: 'Kindled by a real witness to your craft ledger.' },
+      violet: { title: 'Starlight Wisdom Aura', desc: 'Kindled by a mentor or study partner guiding your craft.' }
+    },
+    bondLevels: [
+      { label: 'Just Met', quote: 'Let us begin, one steady step at a time.' },
+      { label: 'Familiar', quote: 'Your focus rhythm is taking shape.' },
+      { label: 'Close Friend', quote: 'Steady effort every week builds real strength.' },
+      { label: 'Trusted Ally', quote: 'I am always watching over your craft.' },
+      { label: 'Soul Partner', quote: 'Every honest minute has forged something real.' }
+    ],
+    expeditionTiers: {
+      none: 'Preparing Expedition',
+      bronze: 'Bronze Supply Chest',
+      silver: 'Silver Explorer Chest',
+      gold: 'Gold Guild Chest'
+    },
+    gems: {
+      peridot: { name: 'Sprout Shard', mineral: 'Peridot' },
+      aquamarine: { name: 'Dew Drop', mineral: 'Aquamarine' },
+      citrine: { name: 'Sun Amber', mineral: 'Citrine' },
+      sapphire: { name: 'Starlight Gem', mineral: 'Sapphire' },
+      prism: { name: 'Dawn Star Relic', mineral: 'Prism Diamond' }
+    }
+  },
+  ja: {
+    appName: 'Craft Glass',
+    tagline: 'AIに代替できない「本物の努力の証跡」',
+    tabs: {
+      pool: '週間プール',
+      focus: '集中する',
+      guild: 'ギルド',
+      proof: '証跡・祝福',
+      insights: '記録・設定'
+    },
+    common: {
+      save: '保存',
+      cancel: 'キャンセル',
+      close: '閉じる',
+      delete: '削除',
+      edit: '編集',
+      done: '完了',
+      copy: 'コピー',
+      copied: 'コピーしました！',
+      share: '共有',
+      export: '書き出す',
+      import: '読み込む',
+      add: '追加',
+      start: '開始',
+      pause: '一時停止',
+      resume: '再開',
+      finish: '終了',
+      confirm: '確定',
+      back: '戻る',
+      all: 'すべて',
+      none: 'なし',
+      today: '今日',
+      thisWeek: '今週',
+      minutesShort: '{n}分',
+      hoursMinutes: '{h}時間{m}分',
+      daysCount: '{n}日',
+      points: '{n} pt',
+      level: 'Lv.{n}'
+    },
+    units: {
+      min: '分',
+      pages: 'ページ',
+      problems: '問',
+      sessions: '回'
+    },
+    categories: {
+      study: '勉強・資格',
+      coding: '開発・制作',
+      language: '語学',
+      reading: '読書',
+      art: 'イラスト・創作',
+      music: '音楽・練習',
+      fitness: '運動・瞑想',
+      other: 'その他'
+    },
+    weekdays: ['月', '火', '水', '木', '金', '土', '日'],
+    weekdaysSunFirst: ['日', '月', '火', '水', '木', '金', '土'],
+    onboarding: {
+      welcomeTitle: 'Craft Glass へようこそ',
+      welcomeBody:
+        'AIで誰でも一瞬でアプリや連続達成記録を作れる時代だからこそ、Craft Glassは「偽造できない本物の時間」「ぼかし付き作業タイムラプス」「生身の人間からの祝福」を守ります。',
+      chooseLang: '表示言語',
+      chooseStarter: 'スターターパック（任意）',
+      blankStart: '空のまま始める',
+      blankDesc: '自分の週間目標や単語カードをゼロから作ります。',
+      enterGuild: 'ギルドへ入る',
+      starterTemplates: {
+        study: {
+          name: '資格・受験の深い勉強',
+          desc: '週間プール計画＋記憶定着FSRSカードセット'
+        },
+        language: {
+          name: '語学マスター習慣',
+          desc: 'リスニング時間・多読ページ・間隔反復カード'
+        },
+        builder: {
+          name: '個人開発・創作クラフト',
+          desc: 'バーンアウトを防ぐ分散ペースでの開発管理'
+        },
+        mindful: {
+          name: '毎日の学びと教養',
+          desc: '読書・スケッチ・楽器など無理のない週間積み上げ'
+        }
+      }
+    },
+    pool: {
+      title: '週間プール',
+      subtitle: '日割りノルマではなく週間の総量で管理。休む日があっても連続記録は途切れません。',
+      weeklyStreak: '週間ストリーク',
+      streakDesc: '80%以上達成した週の連続記録（1日休んでも崩れません）',
+      weeklyCompletion: '今週の消化率',
+      addTask: '+ 新しい週間目標を追加',
+      taskTitle: '目標タイトル',
+      taskTitlePlaceholder: '例：TOEIC文法問題集、技術書を読む、アルゴリズム実装',
+      category: 'カテゴリ',
+      targetAmount: '週間の目標量',
+      unit: '単位',
+      chunkSize: '小分け単位（自動チャンク）',
+      pinDays: '取り組む予定日（ゆるくピン留め）',
+      createGoal: '週間プールに追加',
+      empty: '今週の目標がまだありません。上のフォームから追加してください。',
+      chunksLabel: 'チャンク ({done}/{total})',
+      remainingLabel: '残り {n} {unit}',
+      completedBadge: '今週分 達成',
+      earlyBadge: '早期完了ボーナス！',
+      focusThis: '集中開始',
+      logManual: '+ 事後入力',
+      manualTitle: 'タイマー外の取り組みを記録',
+      manualAmount: '進んだ量 ({unit})',
+      manualMinutes: '取り組んだ時間（分）',
+      manualNote: '気づき・質問メモ（任意）',
+      milestonesTitle: '試験・公開日のカウントダウン',
+      addMilestone: '+ 目標日を追加',
+      milestoneName: '目標・イベント名',
+      milestoneDate: '目標日',
+      daysLeft: 'あと {n}日',
+      dueToday: '当日！',
+      passed: '経過',
+      unitSummaries: '単位別の残量（異なる単位は混ぜません）'
+    },
+    focus: {
+      title: '集中ルーム',
+      linkedGoal: '紐づける週間目標（任意）',
+      noGoal: 'フリー集中セッション',
+      modeStopwatch: 'ストップウォッチ',
+      modePomodoro: '25分ポモドーロ',
+      modeDeep: '50分ディープ集中',
+      cameraTitle: '手元カメラ タイムラプス',
+      cameraHint: '任意でリアルな作業を録画。保存前にリアルタイムでぼかしを焼き込みます。',
+      cameraEnable: 'カメラ録画をオンにする',
+      cameraDisable: 'ドット絵の自習室を使う',
+      blurOff: 'くっきり',
+      blurSoft: 'やわらかぼかし',
+      blurHeavy: 'シルエット保護',
+      roomBackdrop: '自習室の背景テーマ',
+      ambientSound: '環境音（ローカル合成）',
+      ambientOff: '無音',
+      ambientRain: '静かな雨音',
+      ambientBrown: 'やわらかノイズ',
+      ambientDrone: '穏やかな和音',
+      startSession: '集中を開始する',
+      flipCamera: 'カメラ切替',
+      elapsed: '経過時間',
+      targetRemain: 'セッション目標',
+      justWatchNote: '集中中は「見るだけ」の静かな画面。相棒も一緒に成長します。',
+      finishSession: '終了して記録する',
+      abandonShort: '取り消す（1分未満）',
+      summaryTitle: '努力を記録しました！',
+      summaryExp: '+{exp} EXP 獲得（1分 = 1 EXP）',
+      summaryFrames: 'ぼかし済みタイムラプス {n}フレームを端末内に保存',
+      summaryCorrectionHint: 'タイマーを止め忘れた場合は、下の欄から正直に時間を修正できます。',
+      trueDurationMin: '実際の時間（分）',
+      applyCorrection: '時間修正を反映する',
+      correctionApplied: '時間を {min}分 に修正し、EXP・報酬を正確に再計算しました。',
+      gemAppeared: '道ばたで「{name}（{mineral}）」を見つけました！5分休憩で拾えます。',
+      openBreak: '5分休憩して宝石を拾う',
+      breakTitle: '5分間のキャンプ休憩',
+      breakDesc: '目を休めましょう。集中中に見つけた宝石はこの休憩画面でのみ受け取れます。',
+      claimGem: '拾う（＋{pt} pt）',
+      gemClaimed: '宝石を受け取りました！＋{pt} pt（本日 {earned}/{cap} pt）',
+      skipBreak: 'ギルドへ戻る',
+      progressAdd: '「{title}」の進捗を記録 (+{unit})'
+    },
+    guild: {
+      title: '冒険者ギルド',
+      rankCard: 'ギルド年代記（400時間・25段階称号）',
+      nextRank: '次の称号: {rank} — {title}（あと {remaining}）',
+      maxRank: '最高到達 — 生ける伝説（グランドマスター）！',
+      expeditionTitle: '週の遠征ボーナス',
+      expeditionDesc: '詰め込み防止のため、1日最大90分までが遠征箱に反映されます。',
+      effectiveWeek: '今週の遠征 {eff} / 5時間（活動 {days}/7日）',
+      campBonusActive: '野営ボーナス達成（＋10 pt）：週4日以上の分散または課題の早期完了！',
+      campBonusLocked: '野営ボーナス（＋10 pt）：週4日以上の活動、または目標を2日以上前に完了',
+      claimExpedition: '遠征箱を開ける（＋{pt} pt）',
+      expeditionClaimed: '今週受取済み：{pt} pt',
+      companionTitle: '相棒と絆レベル',
+      companionHint: '一緒に集中した保存済み時間だけで、相棒のなつき度が育ちます。',
+      selectCompanion: '相棒に選ぶ',
+      activeCompanion: '現在の相棒',
+      wardrobeTitle: 'クラフトポイント交換＆着せ替え',
+      wardrobeDesc: '所持ポイント: {pt} pt — 課金要素なし。すべて本物の努力で交換できます。',
+      equipped: '装備中',
+      owned: '所持済み・装備する',
+      unlock: '交換する（{cost} pt）',
+      notEnoughPt: '{cost} pt 必要',
+      sealedTitle: '封印された魔物（復習＆休止中の習慣）',
+      sealedDesc: '復習時期が来たFSRSカードや、週半ばで止まっている目標が魔物として現れます。再封印で＋2 pt（1日上限10 pt）。',
+      claimSeals: '封印報酬を受け取る（＋{pt} pt）',
+      reviewCard: 'カードを復習',
+      focusNeglected: '目標を再開',
+      noSealed: 'すべての魔物は封印されています。記憶も習慣も順調です！',
+      gemsShelfTitle: '見つけた宝石コレクション',
+      worldLabel: 'ワールド {n}: {name}'
+    },
+    fsrs: {
+      title: '記憶の鍛冶場 (FSRS)',
+      newCard: '+ カードを追加',
+      front: '問題・表面',
+      back: '答え・裏面',
+      deck: 'デッキ',
+      dueNow: '復習待ち {n}枚',
+      startReview: '復習を始める',
+      showAnswer: '答えを見る',
+      again: 'もう一度',
+      hard: '難しい',
+      good: '覚えた',
+      easy: '余裕',
+      allCaughtUp: 'いま復習待ちのカードはありません！',
+      dueToday: '今日復習',
+      dueTomorrow: '明日復習',
+      dueDays: '{d}日後復習'
+    },
+    proof: {
+      title: '努力の証跡＆生身の祝福',
+      subtitle: 'SHA-256ハッシュで繋がる努力台帳と、リアルな仲間からの祝福スタンプ。',
+      cardTitle: '週間 Proof Card 画像 (1080px PNG)',
+      cardDesc: '白と深緑の清潔なデザインで、日別時間・カテゴリ・称号・検証ハッシュを1枚の画像に出力します。',
+      generateCard: '週間 Proof Card を生成',
+      savePng: 'PNG保存',
+      shareCard: '画像を共有',
+      displayNameLabel: 'カードに載せる名前（任意）',
+      noteLabel: '今週のひとこと（任意）',
+      pactTitle: '生身の祝福 Pact（脱AI定型褒め）',
+      pactDesc: 'AIによる自動のお世辞は一切ありません。仲間に「Pactコード」を送ってスタンプを押してもらうと、7日間の祝福オーラが宿ります。',
+      createPact: '自分の Pactコードを生成',
+      copyPact: 'Pactコードをコピー',
+      verifyPartnerTitle: '仲間の Pactコードを確認してスタンプを送る',
+      pastePact: '仲間の CGP1:... コードを貼り付け',
+      inspectPact: '証跡を確認',
+      yourName: 'あなたの名前',
+      pickStamp: '贈るスタンプを選択',
+      blessingNote: 'ひとこと応援（80文字まで）',
+      issueBlessing: '祝福コードを発行',
+      redeemTitle: '仲間から届いた祝福コードを受け取る',
+      pasteBlessing: '届いた CGB1:... コードを貼り付け',
+      redeemBtn: '7日間の祝福オーラを灯す',
+      activeBlessing: '祝福中: {title}（{sender} より・あと{days}日）',
+      noBlessing: '現在、有効な祝福オーラはありません。仲間とPactコードを交換しましょう！',
+      timelapseTitle: '保存済みタイムラプス動画',
+      noTimelapses: 'まだタイムラプスはありません。集中ルームでカメラをオンにすると保存されます。',
+      play: '再生',
+      exportWebm: '動画書き出し',
+      ledgerTitle: 'SHA-256 努力証跡台帳（直近の記録）',
+      verifyChain: '台帳の整合性を検証',
+      chainValid: 'ハッシュチェーン正常（{n}件の証跡に改ざんなし）',
+      chainInvalid: 'ハッシュ不整合が検出されました！'
+    },
+    insights: {
+      title: '統計・バックアップ設定',
+      heatmapTitle: '90日間の活動ヒートマップ',
+      categoryTitle: 'カテゴリ別の時間内訳',
+      recentLogs: '最近の記録（時間修正可）',
+      correctBtn: '時間を修正',
+      settingsTitle: 'アプリ設定・完全データ所有',
+      languageLabel: '言語',
+      weekStartLabel: '週の始まり',
+      weekMon: '月曜日始まり',
+      weekSun: '日曜日始まり',
+      soundEffects: '効果音（CC0）',
+      reducedMotion: 'アニメーションを減らす',
+      backupTitle: 'サーバー依存ゼロのデータ所有権',
+      backupDesc: 'データはすべて端末内に保存されます。いつでもJSON形式で完全バックアップ・復元が可能です。',
+      exportJson: '全データをJSON書き出し',
+      importJson: 'JSONバックアップから復元',
+      importConfirm: 'バックアップから復元しました！',
+      importError: '不正なバックアップファイルです。',
+      guideBtn: '使い方ガイド＆クレジット',
+      privacyLink: 'プライバシーポリシー'
+    },
+    guide: {
+      title: 'Craft Glass の仕組み',
+      sections: [
+        ['1. なぜAI時代にこのアプリか？', 'AIで誰でも一瞬で達成風画面や定型褒め言葉を作れる時代です。Craft Glassは本物の時間、ぼかし入り手元タイムラプス、生身の友人からの祝福だけを価値として残します。'],
+        ['2. 週間プール制と詰め込み防止', '日割りノルマを作らず週単位で総量を管理します。さらに遠征ボーナスは1日90分が上限なので、直前の一夜漬けより分散した継続が得になります。'],
+        ['3. 休憩の宝石と正直な時間修正', '5分以上の集中ごとに宝石が出現し、5分休憩中だけ受け取れます。タイマーを止め忘れても後から正直に時間を修正でき、過剰な報酬は自動で精算されます。'],
+        ['4. 生身の祝福 Pact', '自分の証明コード (CGP1) をリアルな友人や家族に送り、スタンプ付き祝福コード (CGB1) を返してもらうと、アバターに7日間のオーラが灯ります。自演や再使用は暗号チェックで弾きます。'],
+        ['5. 素材・音源クレジット', '効果音：Kenney (CC0 1.0 Universal)／環境音：Web Audio APIによる端末内合成／ドット絵・スタンプ：Study Glass系譜のオリジナル素材。']
+      ]
+    },
+    errors: {
+      invalidPact: '無効なPactコードです。CGP1:... の全文が揃っているか確認してください。',
+      invalidBlessing: '無効な祝福コードです。CGB1:... を確認してください。',
+      selfBlessing: '自分自身のPactコードにはスタンプを送れません。リアルな仲間に頼みましょう！',
+      wrongProofHash: 'この祝福コードは、あなたの努力台帳のPactと一致しません。',
+      replayBlessing: 'この祝福コードはすでに受け取り済みです。',
+      invalidInput: '必要な項目を入力してください。'
+    },
+    ranks: [
+      ['見習い', 'ギルド仮登録者'],
+      ['Gランク', '門前の志願者'],
+      ['Fランク', '新米冒険者'],
+      ['F+ランク', '薬草採りの新人'],
+      ['Eランク', '駆け出し冒険者'],
+      ['E+ランク', '街道の斥候'],
+      ['Dランク', '一人前の冒険者'],
+      ['D+ランク', '辺境の開拓者'],
+      ['Cランク', '中堅冒険者'],
+      ['C+ランク', '街の頼れる実力者'],
+      ['B-ランク', '討伐隊の主力'],
+      ['Bランク', '熟練冒険者'],
+      ['B+ランク', '迷宮の踏破者'],
+      ['A-ランク', 'ギルドの看板冒険者'],
+      ['Aランク', '一流冒険者'],
+      ['A+ランク', '王国指折りの猛者'],
+      ['S-ランク', '災厄を退けし者'],
+      ['Sランク', '二つ名を持つ英雄'],
+      ['S+ランク', '王国の守護者'],
+      ['SSランク', '国家級の切り札'],
+      ['SS+ランク', '深淵の制覇者'],
+      ['SSSランク', '大陸最強の覇者'],
+      ['EXランク', '規格外の超越者'],
+      ['神話級', '歴史を刻む神話の体現者'],
+      ['殿堂入り', '生ける伝説（グランドマスター）']
+    ],
+    stamps: {
+      'well-done': '頑張ったね！',
+      checked: '確認しました！',
+      thinking: '応援で見守ってるよ',
+      applaud: '本物の努力を称えます',
+      cheer: '応援しています！',
+      retry: 'コツコツ復習しよう',
+      explain: 'ここ掘り下げよう！',
+      together: '一緒に進んでいこう',
+      progress: '一気に進んだね！',
+      'thanks-work': 'お疲れさま！',
+      early: '早いペースで素晴らしい！',
+      'question-thanks': 'ナイスな着眼点！'
+    },
+    blessings: {
+      gold: { title: '黄金の祝福オーラ', desc: 'リアルな仲間があなたの誠実な努力を讃えた証です。' },
+      emerald: { title: '翠風の祝福オーラ', desc: 'リアルな仲間があなたの地道な継続を応援しています。' },
+      sky: { title: '蒼碧の目撃オーラ', desc: '生身の証人があなたの努力台帳を確認した証です。' },
+      violet: { title: '星知の導きオーラ', desc: 'メンターや学習仲間からの知恵の祝福が宿っています。' }
+    },
+    bondLevels: [
+      { label: '出会ったばかり', quote: 'いっしょに一歩ずつ進もう。' },
+      { label: '顔なじみ', quote: 'ペースがつかめてきたね。' },
+      { label: 'なかよし', quote: '毎週の積み重ねが確かな力になるよ。' },
+      { label: 'しんゆう', quote: 'いつでもとなりで見守っているよ。' },
+      { label: '最高の相棒', quote: 'ここまでの嘘のない時間が本物の証だね。' }
+    ],
+    expeditionTiers: {
+      none: '遠征準備中',
+      bronze: '銅の遠征箱',
+      silver: '銀の遠征箱',
+      gold: '金の遠征箱'
+    },
+    gems: {
+      peridot: { name: '若葉の欠片', mineral: 'ペリドット' },
+      aquamarine: { name: '蒼海のしずく', mineral: 'アクアマリン' },
+      citrine: { name: '太陽の琥珀', mineral: 'シトリン' },
+      sapphire: { name: '星夜の輝石', mineral: 'サファイア' },
+      prism: { name: '暁星の秘宝', mineral: 'プリズムダイヤ' }
+    }
+  }
+};
+
+export function detectLocale(preferred) {
+  if (preferred && SUPPORTED_LOCALES.includes(preferred)) return preferred;
+  const navLang = (globalThis.navigator?.language || globalThis.Intl?.DateTimeFormat?.().resolvedOptions?.().locale || 'en').toLowerCase();
+  return navLang.startsWith('ja') ? 'ja' : 'en';
+}
+
+export function getDictionary(locale = 'en') {
+  return DICT[SUPPORTED_LOCALES.includes(locale) ? locale : 'en'];
+}
+
+export function t(locale, keyPath, params = {}) {
+  const dict = getDictionary(locale);
+  const fallback = DICT.en;
+  const resolve = (obj, parts) => {
+    let cur = obj;
+    for (const part of parts) {
+      if (cur == null || typeof cur !== 'object') return undefined;
+      cur = cur[part];
+    }
+    return cur;
+  };
+  const parts = String(keyPath || '').split('.');
+  let val = resolve(dict, parts);
+  if (val === undefined) val = resolve(fallback, parts);
+  if (typeof val !== 'string') return val ?? keyPath;
+  return val.replace(/\{(\w+)\}/g, (_, k) => (k in params ? String(params[k]) : `{${k}}`));
+}
+
+export function formatMinutes(locale, totalSeconds) {
+  const mins = Math.max(0, Math.round(totalSeconds / 60));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h > 0) return t(locale, 'common.hoursMinutes', { h, m });
+  return t(locale, 'common.minutesShort', { n: m });
+}

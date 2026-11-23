@@ -1,0 +1,28 @@
+Craft Glass — Audio & Artwork Credits
+
+1. Sound Effects (CC0 1.0 Universal)
+Kenney — Interface Sounds & Music Jingles
+https://kenney.nl/assets/interface-sounds
+https://kenney.nl/assets/music-jingles
+License: Creative Commons CC0 1.0 Universal
+https://creativecommons.org/publicdomain/zero/1.0/
+Files bundled in web/assets/audio/:
+- boss.wav
+- clear.wav
+- correct.wav
+- finish.wav
+- flip.wav
+- hit.wav
+- homework.wav
+- lock.wav
+- pass.wav
+- start.wav
+- timeout.wav
+- wrong.wav
+Processing: Excerpt trimming, mono downmix, volume normalization, 24 kHz WAV conversion.
+
+2. Pixel Art & Stamps
+Original Study Glass / Craft Glass pixel art assets (worlds, study rooms, heroes, equipment, 24 curated creatures, and 6 blessing stamp illustrations).
+
+3. Ambient Soundscapes
+Generated locally in-browser via Web Audio API synthesis (Rain, Soft Brown Noise, Warm Study Drone). No external network audio or third-party tracks.

@@ -1,0 +1,12 @@
+.local/
+*.jks
+*.keystore
+*.aab
+*.apk
+*.apks
+android/assets/www/
+android/gen/
+android/.build/
+node_modules/
+.DS_Store
+Thumbs.db

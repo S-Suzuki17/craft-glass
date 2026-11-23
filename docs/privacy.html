@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Craft Glass — Privacy Policy</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans JP', sans-serif;
+      background: #f4f9f6;
+      color: #0f172a;
+      line-height: 1.7;
+    }
+    main {
+      max-width: 780px;
+      margin: 32px auto;
+      padding: 28px 24px;
+      background: #ffffff;
+      border: 1px solid #d1fae5;
+      border-radius: 20px;
+      box-shadow: 0 12px 32px -12px rgba(6, 78, 59, 0.14);
+    }
+    h1 { margin-top: 0; color: #065f46; }
+    h2 { color: #0f766e; margin-top: 28px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+    .meta { color: #475569; font-size: 0.92rem; }
+    a { color: #0f766e; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Craft Glass — Privacy Policy</h1>
+    <p class="meta">Effective Date: November 23, 2026 &bull; Package: <code>com.craftglass.app</code></p>
+
+    <h2>1. Overview &amp; Local-First Architecture</h2>
+    <p>
+      Craft Glass is designed as a 100% local-first study and habit tracking application.
+      Your weekly goals, focus timers, FSRS flashcards, RPG progression, SHA-256 Proof Ledger,
+      and optional desk camera timelapses are stored exclusively on your own device (in WebView local storage and IndexedDB).
+    </p>
+
+    <h2>2. Data Collection &amp; Sharing</h2>
+    <ul>
+      <li><strong>No Account Required:</strong> Craft Glass does not require registration, email sign-in, or cloud sync.</li>
+      <li><strong>No Personal Data Collected or Sold:</strong> We do not collect, transmit, store on external servers, or sell any personal data, analytics, behavioral telemetry, or advertising identifiers.</li>
+      <li><strong>No Ads or Third-Party Tracking SDKs:</strong> Craft Glass contains zero advertisements and zero third-party tracking libraries.</li>
+    </ul>
+
+    <h2>3. Optional Camera Permission (<code>android.permission.CAMERA</code>)</h2>
+    <p>
+      Craft Glass requests camera access <strong>only</strong> if you explicitly enable the optional
+      <em>Desk Camera Timelapse</em> mode during a Focus session. When privacy blur is enabled
+      (Soft Blur or Silhouette), the blur filter is applied directly in memory before frames are saved locally.
+      Captured timelapse frames stay inside your device's IndexedDB unless you explicitly choose to export or share a video file via the Android Share Sheet.
+    </p>
+
+    <h2>4. Proof Pact &amp; Blessing Codes</h2>
+    <p>
+      Proof Pact codes (<code>CGP1:...</code>) and Blessing codes (<code>CGB1:...</code>) contain only user-chosen summary metrics (weekly seconds, active days, frame count, and short stamp text) encoded as text strings that you manually share through your own messaging apps. No central server processes them.
+    </p>
+
+    <h2>5. Data Control, Export &amp; Deletion</h2>
+    <p>
+      You own 100% of your data. Inside <em>Insights &rarr; Preferences &amp; Data Ownership</em>, you can export a complete JSON backup of your records at any time. Uninstalling the app or clearing app storage permanently deletes all locally stored records and timelapses.
+    </p>
+
+    <h2>6. Contact</h2>
+    <p>
+      If you have questions about this Privacy Policy, please contact:
+      <a href="mailto:soutasuzuki1101@gmail.com">soutasuzuki1101@gmail.com</a>
+    </p>
+
+    <hr style="margin:36px 0;border:none;border-top:1px solid #e2e8f0">
+
+    <h1>Craft Glass — プライバシーポリシー（日本語）</h1>
+    <p class="meta">発効日: 2026年11月23日 &bull; パッケージ名: <code>com.craftglass.app</code></p>
+
+    <h2>1. 基本方針（完全ローカルファースト設計）</h2>
+    <p>
+      Craft Glass は、端末内完結型（ローカルファースト）の学習・習慣化RPGアプリです。
+      週間プール目標、集中記録、FSRS暗記カード、ギルド成長記録、SHA-256努力台帳、および任意のタイムラプス映像はすべてご利用の端末内（ローカルストレージおよびIndexedDB）にのみ保存されます。
+    </p>
+
+    <h2>2. 個人情報の収集・第三者提供</h2>
+    <ul>
+      <li><strong>アカウント登録不要：</strong>氏名・メールアドレス等の個人情報の登録は不要です。</li>
+      <li><strong>外部送信・収集なし：</strong>開発者のサーバーや第三者へ利用データ、行動履歴、広告IDを送信・収集・共有することは一切ありません。</li>
+      <li><strong>広告・解析SDK不使用：</strong>広告表示やサードパーティ製トラッキングSDKは組み込んでいません。</li>
+    </ul>
+
+    <h2>3. カメラ権限（<code>android.permission.CAMERA</code>）の利用目的</h2>
+    <p>
+      カメラ権限は、集中セッション中にユーザーが明示的に「手元カメラ タイムラプス」を有効にした場合のみ使用されます。
+      プライバシー保護のぼかし設定（やわらかぼかし／シルエット保護）が有効な場合は、端末内で映像を保存する前の段階でぼかし処理を焼き込みます。
+      保存された映像は端末内に留まり、ユーザー自身が共有・保存操作を行わない限り外部へ出ることはありません。
+    </p>
+
+    <h2>4. データの管理・書き出し・削除</h2>
+    <p>
+      アプリ内の「記録・設定」タブからいつでも全データをJSON形式でバックアップ可能です。
+      アプリのアンインストールまたは端末のアプリデータ消去により、端末内の全データを完全に削除できます。
+    </p>
+
+    <h2>5. お問い合わせ</h2>
+    <p>
+      プライバシーに関するお問い合わせ窓口：<a href="mailto:soutasuzuki1101@gmail.com">soutasuzuki1101@gmail.com</a>
+    </p>
+  </main>
+</body>
+</html>
