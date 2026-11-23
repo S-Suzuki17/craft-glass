@@ -100,9 +100,11 @@ export class DeskCameraRecorder {
     this.facingMode = 'environment';
     this.frames = [];
     this.timerId = null;
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = FRAME_W;
-    this.canvas.height = FRAME_H;
+    this.canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+    if (this.canvas) {
+      this.canvas.width = FRAME_W;
+      this.canvas.height = FRAME_H;
+    }
   }
 
   async startPreview(videoEl, { blurMode = 'soft', facingMode = 'environment' } = {}) {
@@ -297,4 +299,110 @@ export async function exportWeeklyVlogVideo(sessions = [], weekKey = '') {
   recorder.stop();
   const blob = await done;
   return { blob, filename: `craft-glass-weekly-vlog-${weekKey || Date.now()}.webm` };
+}
+
+export function buildTimelapseCalendarMonth(
+  sessions = [],
+  timelapses = [],
+  year = new Date().getFullYear(),
+  month = new Date().getMonth()
+) {
+  const firstDate = new Date(Number(year), Number(month), 1);
+  const y = firstDate.getFullYear();
+  const m = firstDate.getMonth();
+  const monthLabel = `${y}-${String(m + 1).padStart(2, '0')}`;
+  const leadingEmpty = firstDate.getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+  const sessionByDay = new Map();
+  for (const s of sessions || []) {
+    if (!s || !s.dayKey) continue;
+    const prev = sessionByDay.get(s.dayKey) || {
+      seconds: 0,
+      count: 0,
+      frameCount: 0,
+      timelapseId: null
+    };
+    prev.seconds += Math.max(0, Number(s.seconds) || 0);
+    prev.count += 1;
+    prev.frameCount += Math.max(0, Number(s.frameCount) || 0);
+    if (!prev.timelapseId && s.timelapseId) prev.timelapseId = s.timelapseId;
+    sessionByDay.set(s.dayKey, prev);
+  }
+
+  const tlByDay = new Map();
+  const orderedTimelapses = [...(timelapses || [])].sort(
+    (a, b) => (Number(b?.startedAt) || 0) - (Number(a?.startedAt) || 0)
+  );
+  for (const tl of orderedTimelapses) {
+    if (!tl || !tl.dayKey) continue;
+    const list = tlByDay.get(tl.dayKey) || [];
+    list.push(tl);
+    tlByDay.set(tl.dayKey, list);
+  }
+
+  const cells = [];
+  for (let i = 0; i < leadingEmpty; i++) {
+    cells.push({
+      empty: true,
+      day: null,
+      dayKey: null,
+      minutes: 0,
+      sessionCount: 0,
+      timelapseId: null,
+      thumbDataUrl: null,
+      frameCount: 0
+    });
+  }
+
+  let totalMonthMinutes = 0;
+  let recordedDaysCount = 0;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayKey = `${monthLabel}-${String(day).padStart(2, '0')}`;
+    const sInfo = sessionByDay.get(dayKey);
+    const tlList = tlByDay.get(dayKey) || [];
+
+    const tlSeconds = tlList.reduce((acc, tl) => acc + Math.max(0, Number(tl.seconds) || 0), 0);
+    const totalSeconds = sInfo && sInfo.seconds > 0 ? sInfo.seconds : tlSeconds;
+    const minutes = Math.round(totalSeconds / 60);
+    const sessionCount = sInfo && sInfo.count > 0 ? sInfo.count : tlList.length;
+
+    const primaryTl = tlList.find((tl) => (tl.frames?.length || 0) > 0 || tl.thumbDataUrl) || tlList[0] || null;
+    const frames = Array.isArray(primaryTl?.frames) ? primaryTl.frames : [];
+    const midFrame = frames.length > 0 ? frames[Math.floor(frames.length / 2)] : null;
+    const thumbDataUrl = midFrame?.dataUrl || frames[0]?.dataUrl || primaryTl?.thumbDataUrl || null;
+    const timelapseId = primaryTl?.id || sInfo?.timelapseId || null;
+
+    const tlFramesTotal = tlList.reduce(
+      (acc, tl) => acc + (Array.isArray(tl.frames) ? tl.frames.length : Math.max(0, Number(tl.frameCount) || 0)),
+      0
+    );
+    const frameCount = Math.max(tlFramesTotal, sInfo?.frameCount || 0);
+
+    totalMonthMinutes += minutes;
+    if (minutes > 0 || timelapseId !== null || frameCount > 0) {
+      recordedDaysCount += 1;
+    }
+
+    cells.push({
+      empty: false,
+      day,
+      dayKey,
+      minutes,
+      sessionCount,
+      timelapseId,
+      thumbDataUrl,
+      frameCount
+    });
+  }
+
+  return {
+    year: y,
+    month: m,
+    monthLabel,
+    totalMonthMinutes,
+    recordedDaysCount,
+    cells
+  };
 }

@@ -47,20 +47,21 @@ export const WORLDS = Object.freeze([
 ].map((w) => Object.freeze({ ...w, src: `./assets/worlds/world-${String(w.id).padStart(2, '0')}.png` })));
 
 export const COMPANIONS = Object.freeze([
-  { id: 'twigfox', en: 'Twig Fox', ja: '小枝ぎつね', cost: 0 },
-  { id: 'acornling', en: 'Acornling', ja: 'どんぐり歩き', cost: 0 },
-  { id: 'bookmarkjay', en: 'Bookmark Jay', ja: 'しおりかけす', cost: 15 },
-  { id: 'candleknight', en: 'Candle Knight', ja: '灯火の小騎士', cost: 20 },
-  { id: 'cometotter', en: 'Comet Otter', ja: '彗星かわうそ', cost: 25 },
-  { id: 'lanternmoth', en: 'Lantern Moth', ja: '灯りの蛾', cost: 30 },
-  { id: 'nestowl', en: 'Archive Owl', ja: '巣もりふくろう', cost: 35 },
-  { id: 'prismseal', en: 'Prism Seal', ja: 'プリズムあざらし', cost: 40 },
-  { id: 'quillfawn', en: 'Quill Fawn', ja: '羽根ペンこじか', cost: 45 },
-  { id: 'clockrook', en: 'Clockwork Rook', ja: '時計のからす', cost: 60 },
-  { id: 'ribbonphoenix', en: 'Ribbon Phoenix', ja: '尾帯の火鳥', cost: 80 },
-  { id: 'astraldragon', en: 'Astral Dragon', ja: '星冠の守護竜', cost: 120 }
+  { id: 'twigfox', en: 'Twig Fox', ja: '小枝ぎつね', cost: 0, minDefeats: 0, pityDefeats: 0, recruitChance: 1.0, skill: { kind: 'strike', mult: 1.35, healPct: 0, en: 'Swift Bite', ja: '疾風かみつき' } },
+  { id: 'acornling', en: 'Acornling', ja: 'どんぐり歩き', cost: 0, minDefeats: 0, pityDefeats: 1, recruitChance: 1.0, skill: { kind: 'heal', mult: 0.85, healPct: 0.14, en: 'Forest Mend', ja: '森の癒やし' } },
+  { id: 'bookmarkjay', en: 'Bookmark Jay', ja: 'しおりかけす', cost: 0, minDefeats: 2, pityDefeats: 4, recruitChance: 0.55, skill: { kind: 'crit', mult: 1.48, healPct: 0, en: 'Gale Feather', ja: '疾風の羽刃' } },
+  { id: 'candleknight', en: 'Candle Knight', ja: '灯火の小騎士', cost: 0, minDefeats: 4, pityDefeats: 7, recruitChance: 0.50, skill: { kind: 'shield', mult: 1.18, healPct: 0.11, en: 'Aegis Bash', ja: '聖火の盾撃' } },
+  { id: 'cometotter', en: 'Comet Otter', ja: '彗星かわうそ', cost: 0, minDefeats: 7, pityDefeats: 11, recruitChance: 0.45, skill: { kind: 'strike', mult: 1.45, healPct: 0, en: 'Comet Splash', ja: '彗星スプラッシュ' } },
+  { id: 'lanternmoth', en: 'Lantern Moth', ja: '灯りの蛾', cost: 0, minDefeats: 11, pityDefeats: 16, recruitChance: 0.42, skill: { kind: 'heal', mult: 0.8, healPct: 0.18, en: 'Glow Dust', ja: '燐光の癒やし粉' } },
+  { id: 'nestowl', en: 'Archive Owl', ja: '巣もりふくろう', cost: 0, minDefeats: 16, pityDefeats: 22, recruitChance: 0.40, skill: { kind: 'crit', mult: 1.58, healPct: 0, en: 'Wisdom Beam', ja: '叡智の閃光' } },
+  { id: 'prismseal', en: 'Prism Seal', ja: 'プリズムあざらし', cost: 0, minDefeats: 22, pityDefeats: 30, recruitChance: 0.38, skill: { kind: 'shield', mult: 1.25, healPct: 0.15, en: 'Prism Ward', ja: 'プリズム護壁' } },
+  { id: 'quillfawn', en: 'Quill Fawn', ja: '羽根ペンこじか', cost: 0, minDefeats: 30, pityDefeats: 40, recruitChance: 0.35, skill: { kind: 'strike', mult: 1.55, healPct: 0, en: 'Ink Pierce', ja: '黒耀の貫通矢' } },
+  { id: 'clockrook', en: 'Clockwork Rook', ja: '時計のからす', cost: 0, minDefeats: 40, pityDefeats: 54, recruitChance: 0.32, skill: { kind: 'double', mult: 1.68, healPct: 0, en: 'Chrono Twin', ja: '時空二連撃' } },
+  { id: 'ribbonphoenix', en: 'Ribbon Phoenix', ja: '尾帯の火鳥', cost: 0, minDefeats: 55, pityDefeats: 72, recruitChance: 0.30, skill: { kind: 'phoenix', mult: 1.5, healPct: 0.16, en: 'Rebirth Flame', ja: '不死鳥の焔' } },
+  { id: 'astraldragon', en: 'Astral Dragon', ja: '星冠の守護竜', cost: 0, minDefeats: 75, pityDefeats: 96, recruitChance: 0.25, skill: { kind: 'dragon', mult: 1.85, healPct: 0.12, en: 'Starfire Breath', ja: '星冠の竜息吹' } }
 ].map((c) => Object.freeze({
   ...c,
+  skill: Object.freeze(c.skill),
   idleSrc: `./assets/creatures/${c.id}-idle.png`,
   moveSrc: `./assets/creatures/${c.id}-move.png`
 })));
@@ -79,6 +80,70 @@ export const SEALED_MONSTER_KINDS = Object.freeze([
   { id: 'teacupbee', en: 'Teacup Bee', ja: '茶花ばち' },
   { id: 'seedling', en: 'Sprout Imp', ja: '芽ばえこびと' }
 ]);
+
+export const WILD_MONSTERS = Object.freeze([
+  // World 1: Verdant Meadow
+  { id: 'seedling', spriteId: 'seedling', worldId: 1, en: 'Sprout Imp', ja: '芽ばえこびと', element: 'verdant', isBoss: false, baseLv: 1 },
+  { id: 'teacupbee', spriteId: 'teacupbee', worldId: 1, en: 'Teacup Bee', ja: '茶花ばち', element: 'gale', isBoss: false, baseLv: 2 },
+  // World 2: Sunlit Woods
+  { id: 'meadow-fox', spriteId: 'twigfox', worldId: 2, en: 'Briar Kit', ja: '野ばらぎつね', element: 'verdant', isBoss: false, baseLv: 3 },
+  { id: 'oak-acorn', spriteId: 'acornling', worldId: 2, en: 'Moss Acorn', ja: '苔どんぐり', element: 'verdant', isBoss: false, baseLv: 4 },
+  // World 3: Crystal Cavern
+  { id: 'crystal-moth', spriteId: 'lanternmoth', worldId: 3, en: 'Quartz Moth', ja: '水晶蛾', element: 'astral', isBoss: false, baseLv: 6 },
+  { id: 'cavern-wyrm', spriteId: 'scrollwyrm', worldId: 3, en: 'Glyph Wyrm', ja: '碑文のへび', element: 'astral', isBoss: false, baseLv: 8 },
+  // World 4: Lantern Peaks
+  { id: 'snowhare', spriteId: 'snowhare', worldId: 4, en: 'Frost Hare', ja: '雪うさぎ', element: 'tide', isBoss: false, baseLv: 10 },
+  { id: 'froststag', spriteId: 'froststag', worldId: 4, en: 'Frost Stag', ja: '霜角の大鹿', element: 'tide', isBoss: false, baseLv: 12 },
+  // World 5: Cloud Corridor (BOSS 1)
+  { id: 'gale-jay', spriteId: 'bookmarkjay', worldId: 5, en: 'Zephyr Jay', ja: '疾風かけす', element: 'gale', isBoss: false, baseLv: 14 },
+  { id: 'cloudray', spriteId: 'cloudray', worldId: 5, en: 'Sky Manta Sovereign', ja: '天雲の大えい', element: 'gale', isBoss: true, baseLv: 16 },
+  // World 6: Stargazer Keep
+  { id: 'keep-knight', spriteId: 'candleknight', worldId: 6, en: 'Vigil Sentinel', ja: '星見の衛兵', element: 'ember', isBoss: false, baseLv: 18 },
+  { id: 'starloom', spriteId: 'starloom', worldId: 6, en: 'Starloom Weaver', ja: '星糸の織機', element: 'astral', isBoss: false, baseLv: 20 },
+  // World 7: Amber Dunes
+  { id: 'dune-newt', spriteId: 'embernewt', worldId: 7, en: 'Sandflare Newt', ja: '砂陽いもり', element: 'ember', isBoss: false, baseLv: 22 },
+  { id: 'moonsphinx', spriteId: 'moonsphinx', worldId: 7, en: 'Moon Sphinx', ja: '月砂の小獅子', element: 'astral', isBoss: false, baseLv: 24 },
+  // World 8: Coral Cove
+  { id: 'reef-otter', spriteId: 'cometotter', worldId: 8, en: 'Tidepool Otter', ja: '潮騒かわうそ', element: 'tide', isBoss: false, baseLv: 26 },
+  { id: 'coral-seal', spriteId: 'prismseal', worldId: 8, en: 'Lagoon Seal', ja: '珊瑚あざらし', element: 'tide', isBoss: false, baseLv: 28 },
+  // World 9: Misty Fen
+  { id: 'lilypadfrog', spriteId: 'lilypadfrog', worldId: 9, en: 'Lotus Toad', ja: '浮葉がえる', element: 'tide', isBoss: false, baseLv: 30 },
+  { id: 'fen-wisp', spriteId: 'lanternmoth', worldId: 9, en: 'Will-o-Moth', ja: '霧灯りの蛾', element: 'verdant', isBoss: false, baseLv: 32 },
+  // World 10: Blossom Terrace (BOSS 2)
+  { id: 'petal-fawn', spriteId: 'quillfawn', worldId: 10, en: 'Blossom Fawn', ja: '桜花こじか', element: 'verdant', isBoss: false, baseLv: 34 },
+  { id: 'sakura-phoenix', spriteId: 'ribbonphoenix', worldId: 10, en: 'Vermilion Crest', ja: '緋桜の霊鳥', element: 'ember', isBoss: true, baseLv: 37 },
+  // World 11: Windcarved Ruins
+  { id: 'ruin-owl', spriteId: 'nestowl', worldId: 11, en: 'Monolith Owl', ja: '古碑のふくろう', element: 'gale', isBoss: false, baseLv: 39 },
+  { id: 'compassdrake', spriteId: 'compassdrake', worldId: 11, en: 'Compass Drake', ja: '羅針の小竜', element: 'gale', isBoss: false, baseLv: 42 },
+  // World 12: Ember Ridge
+  { id: 'embernewt', spriteId: 'embernewt', worldId: 12, en: 'Ember Newt', ja: '熾火いもり', element: 'ember', isBoss: false, baseLv: 44 },
+  { id: 'cinder-drake', spriteId: 'compassdrake', worldId: 12, en: 'Magma Wing', ja: '熔岩の小竜', element: 'ember', isBoss: false, baseLv: 47 },
+  // World 13: Clockwork Canal
+  { id: 'gear-rook', spriteId: 'clockrook', worldId: 13, en: 'Chrono Rook', ja: '歯車からす', element: 'astral', isBoss: false, baseLv: 49 },
+  { id: 'brass-knight', spriteId: 'candleknight', worldId: 13, en: 'Automaton Guard', ja: '機巧の騎士', element: 'ember', isBoss: false, baseLv: 52 },
+  // World 14: Harvest Orchard
+  { id: 'honey-bee', spriteId: 'teacupbee', worldId: 14, en: 'Nectar Queen Bee', ja: '黄金蜜ばち', element: 'verdant', isBoss: false, baseLv: 54 },
+  { id: 'orchard-imp', spriteId: 'seedling', worldId: 14, en: ' Cider Mandrake', ja: '芳醇こびと', element: 'verdant', isBoss: false, baseLv: 57 },
+  // World 15: Emerald Trench (BOSS 3)
+  { id: 'abyss-ray', spriteId: 'cloudray', worldId: 15, en: 'Trench Ray', ja: '深海えい', element: 'tide', isBoss: false, baseLv: 60 },
+  { id: 'dawnleviathan', spriteId: 'dawnleviathan', worldId: 15, en: 'Abyssal Leviathan', ja: '深碧の海竜王', element: 'tide', isBoss: true, baseLv: 64 },
+  // World 16: Moonlit Cloister
+  { id: 'lunar-sphinx', spriteId: 'moonsphinx', worldId: 16, en: 'Eclipse Sphinx', ja: '月蝕の守護獅子', element: 'astral', isBoss: false, baseLv: 68 },
+  // World 17: Silent Archive
+  { id: 'scrollwyrm', spriteId: 'scrollwyrm', worldId: 17, en: 'Forbidden Scroll Wyrm', ja: '禁書の古竜', element: 'astral', isBoss: false, baseLv: 74 },
+  // World 18: Aurora Glade
+  { id: 'aurora-stag', spriteId: 'froststag', worldId: 18, en: 'Aurora Greatstag', ja: '極光の神鹿', element: 'tide', isBoss: false, baseLv: 81 },
+  // World 19: Slumber Garden
+  { id: 'dream-weaver', spriteId: 'starloom', worldId: 19, en: 'Dreamloom Seraph', ja: '夢紡ぎの精霊', element: 'astral', isBoss: false, baseLv: 88 },
+  // World 20: Dawn Observatory (BOSS 4)
+  { id: 'cosmos-drake', spriteId: 'dawnleviathan', worldId: 20, en: 'Nebula Serpent', ja: '星雲の天竜', element: 'astral', isBoss: false, baseLv: 93 },
+  { id: 'astral-overlord', spriteId: 'astraldragon', worldId: 20, en: 'Chronos Astral Dragon', ja: '暁星の創世竜', element: 'astral', isBoss: true, baseLv: 99 }
+].map((m) => Object.freeze({
+  ...m,
+  en: m.en.trim(),
+  idleSrc: `./assets/creatures/${m.spriteId}-idle.png`,
+  moveSrc: `./assets/creatures/${m.spriteId}-move.png`
+})));
 
 export const BOND_TIERS = Object.freeze([
   { level: 1, minSeconds: 0, hearts: 1 },

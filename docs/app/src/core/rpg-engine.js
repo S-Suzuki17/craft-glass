@@ -14,6 +14,7 @@ import {
   BOND_TIERS,
   BREAK_GEMS,
   SEALED_MONSTER_KINDS,
+  WILD_MONSTERS,
   EQUIPMENT_CATALOG,
   ROOMS
 } from './catalog.js';
@@ -38,6 +39,92 @@ export const BREAK_GEM_TTL_MS = DAY_MS;
 export const MONSTER_SEAL_POINTS = 2;
 export const MONSTER_SEAL_DAILY_CAP = 10;
 export const MONSTER_SEAL_MAX_ACTIVE = 5;
+export const WILD_DEFEAT_UNIT_SECONDS = 15 * 60; // Every 15m of real focus defeats 1 wild creature
+
+export function calcWildDefeats(state) {
+  const focusSec = calcTotalFocusSeconds(state?.sessions || []);
+  const sealed = Math.max(0, Math.floor(Number(state?.totalMonstersSealed) || 0));
+  return Math.floor(focusSec / WILD_DEFEAT_UNIT_SECONDS) + sealed;
+}
+
+/**
+ * Evaluates wild creature defeats from recorded focus time & sealed monsters.
+ * Once defeats reach a companion's encounter zone (`minDefeats`), each defeat rolls a
+ * deterministic befriend chance (`recruitChance`), with 100% guarantee at `pityDefeats`.
+ */
+export function reconcileCompanionRecruits(state) {
+  const defeats = calcWildDefeats(state);
+  const prevOwned = new Set(state?.ownedCompanions || ['twigfox']);
+  const nextOwned = [];
+  const newlyRecruited = [];
+  const deviceSeed = String(state?.deviceId || 'craft-glass');
+
+  for (const c of COMPANIONS) {
+    if (c.id === 'twigfox' || defeats >= c.pityDefeats) {
+      nextOwned.push(c.id);
+      if (!prevOwned.has(c.id)) newlyRecruited.push(c);
+      continue;
+    }
+    if (defeats < c.minDefeats) {
+      continue;
+    }
+    let befriended = false;
+    for (let d = Math.max(1, c.minDefeats); d <= defeats; d++) {
+      const roll = (stableHash(`${deviceSeed}:${c.id}:${d}`) % 1000) / 1000;
+      if (roll < (c.recruitChance || 0.35)) {
+        befriended = true;
+        break;
+      }
+    }
+    if (befriended) {
+      nextOwned.push(c.id);
+      if (!prevOwned.has(c.id)) newlyRecruited.push(c);
+    }
+  }
+
+  const activeCompanion = nextOwned.includes(state?.activeCompanion)
+    ? state.activeCompanion
+    : 'twigfox';
+
+  return {
+    defeats,
+    newlyRecruited,
+    state: {
+      ...state,
+      ownedCompanions: nextOwned,
+      activeCompanion
+    }
+  };
+}
+
+export function getBestiaryProgress(state) {
+  const totalDefeats = calcWildDefeats(state);
+  const totalSec = calcTotalFocusSeconds(state?.sessions || []);
+  const { level, unlockedWorld } = calcGuildLevel(totalSec, 'en');
+  const maxWorldId = unlockedWorld?.id || 1;
+  const total = WILD_MONSTERS.length;
+
+  let discoveredCount = 0;
+  const monsters = WILD_MONSTERS.map((m, idx) => {
+    const baseCount = Math.floor(totalDefeats / total);
+    const extra = idx < (totalDefeats % total) ? 1 : 0;
+    const defeatedCount = baseCount + extra;
+    const unlocked = defeatedCount > 0 || m.worldId <= maxWorldId || level >= m.baseLv;
+    if (unlocked) discoveredCount++;
+    return {
+      ...m,
+      defeatedCount,
+      unlocked
+    };
+  });
+
+  return {
+    totalMonsters: total,
+    discoveredCount,
+    totalDefeats,
+    monsters
+  };
+}
 
 function stableHash(str) {
   let h = 2166136261 >>> 0;
@@ -104,18 +191,36 @@ export function calcGuildLevel(totalSeconds = 0, locale = 'en') {
   };
 }
 
+export function reqCompanionMinutes(compLevel) {
+  if (compLevel <= 1) return 0;
+  return Math.round(Math.pow(compLevel - 1, 1.25) * 12);
+}
+
 export function companionBondInfo(seconds = 0, locale = 'en') {
   const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  const mins = Math.floor(total / 60);
   let tier = BOND_TIERS[0];
   for (const b of BOND_TIERS) {
     if (total >= b.minSeconds) tier = b;
   }
+  let compLevel = 1;
+  while (compLevel < 50 && reqCompanionMinutes(compLevel + 1) <= mins) {
+    compLevel++;
+  }
+  const curLvMin = reqCompanionMinutes(compLevel);
+  const nextLvMin = compLevel < 50 ? reqCompanionMinutes(compLevel + 1) : curLvMin;
+  const compExpPercent = compLevel >= 50
+    ? 100
+    : Math.min(100, Math.round(((mins - curLvMin) / Math.max(1, nextLvMin - curLvMin)) * 100));
+
   const next = BOND_TIERS.find((b) => b.level === tier.level + 1) || null;
   const dictList = t(locale, 'bondLevels');
   const localized = dictList[tier.level - 1] || dictList[0];
   return {
     seconds: total,
     level: tier.level,
+    compLevel,
+    compExpPercent,
     hearts: tier.hearts,
     maxHearts: BOND_TIERS.length,
     label: localized.label,
@@ -531,6 +636,7 @@ export function correctSessionDuration(state, sessionId, newSecondsRaw, nowMs = 
   }
 
   next = reconcileUnearnedSpending(next);
+  next = reconcileCompanionRecruits(next).state;
   return { changed: true, shortened, oldSeconds, newSeconds, state: next };
 }
 

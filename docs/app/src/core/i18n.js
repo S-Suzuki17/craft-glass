@@ -195,7 +195,11 @@ const DICT = {
       focusNeglected: 'Resume Pool',
       noSealed: 'All monsters stay sealed! Your memory & weekly pools are in balance.',
       gemsShelfTitle: 'Break Gems Shelf',
-      worldLabel: 'World {n}: {name}'
+      worldLabel: 'World {n}: {name}',
+      rankingTitle: 'Category Ranking',
+      rankYou: 'Rank #{rank} • {div}',
+      nextRankMins: '+{min}m to rank up',
+      topRank: '#1 Champion!'
     },
     fsrs: {
       title: 'Memory Forge (FSRS)',
@@ -248,7 +252,16 @@ const DICT = {
       ledgerTitle: 'SHA-256 Proof Ledger (Recent Entries)',
       verifyChain: 'Verify Integrity',
       chainValid: 'Hash chain verified ({n} entries intact)',
-      chainInvalid: 'Hash mismatch detected!'
+      chainInvalid: 'Hash mismatch detected!',
+      calendarTitle: 'Timelapse Calendar',
+      snsTitle: 'SNS Share & Co-Focus',
+      shareX: 'Post to X',
+      shareLine: 'LINE',
+      shareDiscord: 'Copy Discord/SNS',
+      storyCardBtn: '9:16 Story PNG',
+      beaconCopy: 'My Campfire Code',
+      beaconAdd: 'Join Friend',
+      beaconPlaceholder: 'Paste friend CGF1:... code'
     },
     insights: {
       title: 'Chronicle & Settings',
@@ -270,7 +283,20 @@ const DICT = {
       importConfirm: 'Backup restored successfully!',
       importError: 'Invalid backup file.',
       guideBtn: 'Craft Guide & Credits',
-      privacyLink: 'Privacy Policy'
+      privacyLink: 'Privacy Policy',
+      adminTitle: 'Admin & Coach Console',
+      adminUnlockBtn: 'Unlock Admin (PIN)',
+      adminLockBtn: 'Lock Admin',
+      adminPinPlaceholder: 'PIN (default 0000)',
+      adminNewPinPlaceholder: 'New 4-8 digit PIN',
+      adminPinUpdated: 'Admin PIN updated!',
+      adminWrongPin: 'Incorrect Admin PIN.',
+      adminVerifyBtn: '✓ Verify',
+      adminVerifiedBadge: '✓ Verified',
+      adminCorrectedBadge: 'Adjusted',
+      adminPointsTitle: 'Coach Point Adjustment',
+      adminRosterTitle: 'Managed Student / Member Roster',
+      adminExportCsv: 'Export Sessions CSV'
     },
     guide: {
       title: 'How Craft Glass Works',
@@ -381,6 +407,9 @@ const DICT = {
       featureRooms: 'Study Room Backdrops',
       featureRoomsFree: '2 starter + earnable',
       featureRoomsPro: 'All 12 rooms unlocked',
+      featureAdmin: 'Admin Roster & CSV / Story',
+      featureAdminFree: 'Up to 3 members (Ad Pass export)',
+      featureAdminPro: 'Unlimited Roster, CSV & Story',
       bestValue: 'Best Value',
       skuNames: {
         craft_pro_yearly: 'Yearly Plan',
@@ -420,7 +449,11 @@ const DICT = {
       victory: 'VICTORY!',
       defeat: 'DEFEAT',
       ready: 'READY',
-      invalidCode: 'Invalid CGD1 Duel Code.'
+      invalidCode: 'Invalid CGD1 Duel Code.',
+      modePvp: 'PvP Rivals',
+      modeStage: 'Stage Bosses',
+      bestiaryTitle: 'Monster Codex',
+      discovered: '{done}/{total}'
     }
   },
   ja: {
@@ -615,7 +648,11 @@ const DICT = {
       focusNeglected: '目標を再開',
       noSealed: 'すべての魔物は封印されています。記憶も習慣も順調です！',
       gemsShelfTitle: '見つけた宝石コレクション',
-      worldLabel: 'ワールド {n}: {name}'
+      worldLabel: 'ワールド {n}: {name}',
+      rankingTitle: 'カテゴリ別ランキング',
+      rankYou: '#{rank}位 • {div}',
+      nextRankMins: 'あと{min}分で上位へ',
+      topRank: '現在1位！'
     },
     fsrs: {
       title: '記憶の鍛冶場 (FSRS)',
@@ -668,7 +705,16 @@ const DICT = {
       ledgerTitle: 'SHA-256 努力証跡台帳（直近の記録）',
       verifyChain: '台帳の整合性を検証',
       chainValid: 'ハッシュチェーン正常（{n}件の証跡に改ざんなし）',
-      chainInvalid: 'ハッシュ不整合が検出されました！'
+      chainInvalid: 'ハッシュ不整合が検出されました！',
+      calendarTitle: 'タイムラプスカレンダー',
+      snsTitle: 'SNS共有・共闘キャンプ',
+      shareX: 'Xで共有',
+      shareLine: 'LINE',
+      shareDiscord: 'SNS用コピー',
+      storyCardBtn: '9:16 ストーリー画像',
+      beaconCopy: '共闘コード取得',
+      beaconAdd: '仲間を呼ぶ',
+      beaconPlaceholder: '友人の CGF1:... コード'
     },
     insights: {
       title: '統計・バックアップ設定',
@@ -690,7 +736,20 @@ const DICT = {
       importConfirm: 'バックアップから復元しました！',
       importError: '不正なバックアップファイルです。',
       guideBtn: '使い方ガイド＆クレジット',
-      privacyLink: 'プライバシーポリシー'
+      privacyLink: 'プライバシーポリシー',
+      adminTitle: '管理者・指導者コンソール',
+      adminUnlockBtn: '管理者ロック解除 (PIN)',
+      adminLockBtn: '管理者ロック',
+      adminPinPlaceholder: 'PIN (初期値 0000)',
+      adminNewPinPlaceholder: '新しい4〜8桁PIN',
+      adminPinUpdated: '管理者PINを更新しました',
+      adminWrongPin: '管理者PINが違います',
+      adminVerifyBtn: '✓ 承認',
+      adminVerifiedBadge: '✓ 承認済',
+      adminCorrectedBadge: '時間修正あり',
+      adminPointsTitle: '管理者ポイント加減算',
+      adminRosterTitle: '受講生・メンバー進捗管理',
+      adminExportCsv: '学習記録CSV出力'
     },
     guide: {
       title: 'Craft Glass の仕組み',
@@ -801,6 +860,9 @@ const DICT = {
       featureRooms: '自習室の背景テーマ',
       featureRoomsFree: '初期2種＋努力pt解放',
       featureRoomsPro: '全12テーマを即時解放',
+      featureAdmin: '管理者名簿・CSV・9:16画像',
+      featureAdminFree: '名簿3名まで（広告パスで出力）',
+      featureAdminPro: '名簿無制限・CSV＆ストーリー無制限',
       bestValue: '一番人気',
       skuNames: {
         craft_pro_yearly: '年間プラン',
@@ -840,7 +902,11 @@ const DICT = {
       victory: 'VICTORY!',
       defeat: 'DEFEAT',
       ready: 'READY',
-      invalidCode: '無効な CGD1 対戦コードです。'
+      invalidCode: '無効な CGD1 対戦コードです。',
+      modePvp: '対人・ライバル',
+      modeStage: 'ステージ討伐',
+      bestiaryTitle: '魔物図鑑',
+      discovered: '{done}/{total}'
     }
   }
 };

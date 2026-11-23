@@ -30,6 +30,9 @@ import {
   calcTotalFocusSeconds,
   calcGuildLevel,
   companionBondInfo,
+  calcWildDefeats,
+  reconcileCompanionRecruits,
+  getBestiaryProgress,
   evaluateWeeklyExpedition,
   claimExpeditionChest,
   spawnBreakGemForSession,
@@ -80,6 +83,7 @@ import { soundEngine } from './ui/audio.js';
 import { startSceneRenderer, startDuelRenderer, renderStaticSpriteThumb } from './ui/pixel-renderer.js';
 import {
   buildHeroFighter,
+  buildStageBossFighter,
   createDuelCode,
   parseDuelCode,
   GUILD_RIVALS,
@@ -92,9 +96,29 @@ import {
   getTimelapseSession,
   deleteTimelapseSession,
   exportTimelapseVideo,
-  exportWeeklyVlogVideo
+  exportWeeklyVlogVideo,
+  buildTimelapseCalendarMonth
 } from './ui/timelapse.js';
 import { generateProofCardBlob } from './ui/proof-card.js';
+import {
+  verifyAdminPin,
+  updateAdminPin,
+  getAdminAuditReport,
+  adminVerifySession,
+  adminDeleteSession,
+  adminAdjustPoints,
+  adminUpsertRosterMember,
+  adminRemoveRosterMember,
+  exportAdminCsv
+} from './core/admin-manager.js';
+import {
+  buildSnsShareLinks,
+  generateVerticalStoryCardBlob,
+  createCoFocusBeacon,
+  parseCoFocusBeacon,
+  RANKING_CATEGORIES,
+  buildCategoryLeaderboard
+} from './ui/social-hub.js';
 import {
   isNativeAndroid,
   setKeepScreenOn,
@@ -125,6 +149,9 @@ let activeTab = 'pool';
 let sceneCleanup = null;
 let duelSceneCleanup = null;
 let duelTickTimer = null;
+let duelMode = 'pvp';
+let duelStageWorldId = 1;
+let rankingCategory = 'all';
 let duelSelectedId = GUILD_RIVALS[0].id;
 let duelCustomFighter = null;
 let duelCustomCode = '';
@@ -132,6 +159,11 @@ let duelLiveState = null;
 let focusSceneCleanup = null;
 let lastProofBlob = null;
 let lastProofUrl = null;
+let lastStoryBlob = null;
+let lastStoryUrl = null;
+let calendarYear = new Date().getFullYear();
+let calendarMonth = new Date().getMonth();
+let adminUnlocked = false;
 let lastGeneratedPact = '';
 let inspectedPact = null;
 let selectedStampKey = BLESSING_STAMPS[0].key;
@@ -568,16 +600,24 @@ function openManualLogDialog(poolId) {
     const nextLedger = await appendProofLedgerEntry(state.proofLedger || [], session);
     soundEngine.play('finish');
     closeDialog();
-    setState((prev) => ({
-      ...prev,
-      pools: prev.pools.map((p) => (p.id === pool.id ? advancePoolAmount(p, amount, nowMs) : p)),
-      sessions: [session, ...(prev.sessions || [])],
-      companionBonds: {
-        ...(prev.companionBonds || {}),
-        [prev.activeCompanion]: (Number(prev.companionBonds?.[prev.activeCompanion]) || 0) + session.seconds
-      },
-      proofLedger: nextLedger
-    }));
+    setState((prev) => {
+      const updated = {
+        ...prev,
+        pools: prev.pools.map((p) => (p.id === pool.id ? advancePoolAmount(p, amount, nowMs) : p)),
+        sessions: [session, ...(prev.sessions || [])],
+        companionBonds: {
+          ...(prev.companionBonds || {}),
+          [prev.activeCompanion]: (Number(prev.companionBonds?.[prev.activeCompanion]) || 0) + session.seconds
+        },
+        proofLedger: nextLedger
+      };
+      const rec = reconcileCompanionRecruits(updated);
+      if (rec.newlyRecruited.length > 0) {
+        const names = rec.newlyRecruited.map((c) => c[loc] || c.en).join(', ');
+        setTimeout(() => showToast(`🐾 ${names} ${loc === 'ja' ? 'が仲間になった！' : 'joined!'}`), 120);
+      }
+      return rec.state;
+    });
     showToast(t(loc, 'focus.summaryExp', { exp: mins }));
   };
 }
@@ -899,13 +939,15 @@ async function finishFocusSession() {
     proofLedger: nextLedger
   };
   nextState = spawnBreakGemForSession(nextState, session, nowMs);
+  const rec = reconcileCompanionRecruits(nextState);
+  nextState = rec.state;
   setState(nextState);
 
   cachedTimelapses = await listTimelapseSessions();
-  openFinishSummaryDialog(session);
+  openFinishSummaryDialog(session, rec.newlyRecruited);
 }
 
-function openFinishSummaryDialog(session) {
+function openFinishSummaryDialog(session, newlyRecruited = []) {
   const loc = locale();
   const mins = Math.round(session.seconds / 60);
   const gem = (state.pendingGems || []).find((g) => g.sessionId === session.id && !g.claimedAt);
@@ -918,6 +960,11 @@ function openFinishSummaryDialog(session) {
     </div>
     <p class="stat-value">+${mins} EXP</p>
     ${session.frameCount > 0 ? `<p class="muted">📷 ${session.frameCount}</p>` : ''}
+    ${newlyRecruited.length > 0 ? `
+      <div class="card" style="background:#ecfdf5;margin:10px 0">
+        <strong>🐾 ${esc(newlyRecruited.map((c) => c[loc] || c.en).join(', '))} ${loc === 'ja' ? 'が仲間になった！' : 'joined!'}</strong>
+      </div>
+    ` : ''}
     ${gem ? `
       <div class="card" style="background:var(--gold-soft);margin:12px 0;display:flex;justify-content:space-between;align-items:center;gap:8px">
         <strong>💎 ${esc(t(loc, `gems.${gem.gemId}.name`))}</strong>
@@ -1014,17 +1061,28 @@ function renderGuildTab(main) {
     claimedPoints: Number(state.expeditionClaims?.[wk]) || 0
   });
   const comp = COMPANIONS.find((c) => c.id === state.activeCompanion) || COMPANIONS[0];
-  const compBond = companionBondInfo(state.companionBonds?.[comp.id] || 0, loc);
+  const compBond = companionBondInfo(state.companionBonds?.[comp.id] ?? totalSec, loc);
+  const wildRec = reconcileCompanionRecruits(state);
+  const wildDefeats = wildRec.defeats;
+  const ownedCompIds = new Set(wildRec.state.ownedCompanions);
   const blessing = getActiveBlessing(state, loc);
   const sealed = getSealedMonsters(state, wk);
   const unclaimedSeals = (state.sealEvents || []).filter((e) => !e.claimedAt);
   const dueCards = getDueCards(state.cards || []);
   const myFighter = buildHeroFighter(state);
-  const activeRival = duelSelectedId === 'friend' && duelCustomFighter
-    ? duelCustomFighter
-    : (GUILD_RIVALS.find((r) => r.id === duelSelectedId) || GUILD_RIVALS[0]);
+  const bestiary = getBestiaryProgress(state);
+  const leaderboard = buildCategoryLeaderboard(state, rankingCategory, state.coFocusFriends || [], wk);
+  const activeRival = duelMode === 'stage'
+    ? buildStageBossFighter(duelStageWorldId, loc)
+    : (duelSelectedId === 'friend' && duelCustomFighter
+      ? duelCustomFighter
+      : (GUILD_RIVALS.find((r) => r.id === duelSelectedId) || GUILD_RIVALS[0]));
+  const duelStageLabel = duelMode === 'stage'
+    ? `STAGE ${duelStageWorldId}${activeRival.isBoss ? ' BOSS' : ''}`
+    : 'PVP DUEL';
+  const duelWorldSrc = (duelMode === 'stage' && activeRival.worldSrc) ? activeRival.worldSrc : rank.unlockedWorld.src;
 
-  if (!duelLiveState || duelLiveState.right?.name !== activeRival.name || duelLiveState.left?.level !== myFighter.level) {
+  if (!duelLiveState || duelLiveState.right?.id !== activeRival.id || duelLiveState.right?.name !== activeRival.name || duelLiveState.left?.level !== myFighter.level || duelLiveState.left?.companionId !== myFighter.companionId) {
     duelLiveState = {
       left: myFighter,
       right: activeRival,
@@ -1046,24 +1104,43 @@ function renderGuildTab(main) {
       <div class="card-head">
         <h2>⚔️ ${esc(t(loc, 'duel.title'))}</h2>
         <div class="chip-row">
-          <span class="pill-badge">HP ${myFighter.maxHp} • ATK ${myFighter.atk} • SPD ${myFighter.spd}</span>
+          <button type="button" class="chip-btn${duelMode === 'pvp' ? ' active' : ''}" data-duel-mode="pvp">${esc(t(loc, 'duel.modePvp'))}</button>
+          <button type="button" class="chip-btn${duelMode === 'stage' ? ' active' : ''}" data-duel-mode="stage">${esc(t(loc, 'duel.modeStage'))}</button>
+          <span class="pill-badge">HP ${myFighter.maxHp} • ATK ${myFighter.atk} • ★Lv.${myFighter.compLevel} ${esc(myFighter.skill?.[loc] || myFighter.skill?.en || '')}</span>
           <button type="button" id="duel-copy-code-btn" class="btn btn-secondary btn-sm">📋 ${esc(t(loc, 'duel.copyCode'))}</button>
         </div>
       </div>
       <canvas id="guild-duel-canvas" class="scene-canvas" width="440" height="185"></canvas>
-      <div class="chip-row" style="margin-top:10px;justify-content:space-between;align-items:center">
-        <div class="chip-row">
-          ${GUILD_RIVALS.map((r) => `
-            <button type="button" class="chip-btn${duelSelectedId === r.id ? ' active' : ''}" data-duel-rival="${esc(r.id)}">Lv.${r.level} ${esc(r.name)}</button>
-          `).join('')}
-          ${duelCustomFighter ? `<button type="button" class="chip-btn${duelSelectedId === 'friend' ? ' active' : ''}" data-duel-rival="friend">Lv.${duelCustomFighter.level} ${esc(duelCustomFighter.name)}</button>` : ''}
+      ${duelMode === 'pvp' ? `
+        <div class="chip-row" style="margin-top:10px;justify-content:space-between;align-items:center">
+          <div class="chip-row">
+            ${GUILD_RIVALS.map((r) => `
+              <button type="button" class="chip-btn${duelSelectedId === r.id ? ' active' : ''}" data-duel-rival="${esc(r.id)}">Lv.${r.level} ${esc(r.name)}</button>
+            `).join('')}
+            ${duelCustomFighter ? `<button type="button" class="chip-btn${duelSelectedId === 'friend' ? ' active' : ''}" data-duel-rival="friend">Lv.${duelCustomFighter.level} ${esc(duelCustomFighter.name)}</button>` : ''}
+          </div>
+          <button type="button" id="duel-fight-btn" class="btn btn-gold btn-sm">${esc(t(loc, 'duel.fightBtn'))}</button>
         </div>
-        <button type="button" id="duel-fight-btn" class="btn btn-gold btn-sm">${esc(t(loc, 'duel.fightBtn'))}</button>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <input id="duel-friend-input" type="text" value="${esc(duelCustomCode)}" placeholder="${esc(t(loc, 'duel.pasteCode'))}" style="flex:1">
-        <button type="button" id="duel-load-friend-btn" class="btn btn-secondary btn-sm">${esc(t(loc, 'duel.vsFriend'))}</button>
-      </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="duel-friend-input" type="text" value="${esc(duelCustomCode)}" placeholder="${esc(t(loc, 'duel.pasteCode'))}" style="flex:1">
+          <button type="button" id="duel-load-friend-btn" class="btn btn-secondary btn-sm">${esc(t(loc, 'duel.vsFriend'))}</button>
+        </div>
+      ` : `
+        <div class="chip-row" style="margin-top:10px;justify-content:space-between;align-items:center">
+          <div class="chip-row" style="align-items:center">
+            <select id="duel-stage-select" style="min-height:38px;padding:6px 10px;border-radius:12px;border:1px solid #cbd5e1;font-weight:700;font-size:0.84rem">
+              ${WORLDS.map((w) => {
+                const sb = buildStageBossFighter(w.id, loc);
+                return `<option value="${w.id}"${duelStageWorldId === w.id ? ' selected' : ''}>W${w.id}${sb.isBoss ? ' ★BOSS' : ''} • Lv.${sb.level} ${esc(sb.name)}</option>`;
+              }).join('')}
+            </select>
+            ${[1, 5, 10, 15, 20].map((wid) => `
+              <button type="button" class="chip-btn${duelStageWorldId === wid ? ' active' : ''}" data-duel-stage="${wid}">W${wid}${wid >= 5 ? '★' : ''}</button>
+            `).join('')}
+          </div>
+          <button type="button" id="duel-fight-btn" class="btn btn-gold btn-sm">${esc(t(loc, 'duel.fightBtn'))}</button>
+        </div>
+      `}
     </section>
 
     <section class="card glass">
@@ -1120,21 +1197,28 @@ function renderGuildTab(main) {
     <section class="card glass">
       <div class="card-head">
         <h2>${esc(t(loc, 'guild.companionTitle'))}</h2>
-        <span class="pill-badge">${esc(comp[loc] || comp.en)} • ♥${compBond.hearts}/${compBond.maxHearts}</span>
+        <span class="pill-badge">⚔️ ${wildDefeats} ${loc === 'ja' ? '討伐' : 'Defeated'} • ${esc(comp[loc] || comp.en)} ★Lv.${compBond.compLevel}</span>
       </div>
       <div class="item-grid">
         ${COMPANIONS.map((c) => {
-          const owned = (state.ownedCompanions || []).includes(c.id);
+          const owned = ownedCompIds.has(c.id);
           const isCurrent = state.activeCompanion === c.id;
+          const cSec = state.companionBonds?.[c.id] ?? (isCurrent ? totalSec : 0);
+          const cBond = companionBondInfo(cSec, loc);
+          const skillLabel = c.skill?.[loc] || c.skill?.en || '';
+          const prog = Math.min(100, Math.round((wildDefeats / Math.max(1, c.pityDefeats)) * 100));
           return `
             <div class="shop-item">
               <canvas width="56" height="56" data-thumb-src="${esc(c.idleSrc)}"></canvas>
               <strong>${esc(c[loc] || c.en)}</strong>
-              ${isCurrent
-                ? `<span class="pill-badge">${esc(t(loc, 'guild.activeCompanion'))}</span>`
-                : owned
-                  ? `<button type="button" class="btn btn-secondary btn-sm" data-select-comp="${esc(c.id)}">${esc(t(loc, 'guild.selectCompanion'))}</button>`
-                  : `<button type="button" class="btn btn-primary btn-sm" data-buy-kind="companion" data-buy-id="${esc(c.id)}" ${state.points < c.cost ? 'disabled' : ''}>${esc(t(loc, 'guild.unlock', { cost: c.cost }))}</button>`}
+              <small class="muted">⚡ ${esc(skillLabel)}</small>
+              ${owned
+                ? `<span class="pill-badge muted-pill">★Lv.${cBond.compLevel} • ♥${cBond.hearts}</span>
+                   ${isCurrent
+                     ? `<span class="pill-badge">${esc(t(loc, 'guild.activeCompanion'))}</span>`
+                     : `<button type="button" class="btn btn-secondary btn-sm" data-select-comp="${esc(c.id)}">${esc(t(loc, 'guild.selectCompanion'))}</button>`}`
+                : `<span class="pill-badge muted-pill">🔒 ⚔️ ${Math.min(wildDefeats, c.pityDefeats)}/${c.pityDefeats}</span>
+                   <progress class="craft-progress" max="100" value="${prog}" style="height:6px"></progress>`}
             </div>
           `;
         }).join('')}
@@ -1171,6 +1255,62 @@ function renderGuildTab(main) {
     </section>
 
     <section class="card glass">
+      <div class="card-head">
+        <h2>🏆 ${esc(t(loc, 'guild.rankingTitle'))}</h2>
+        <div class="chip-row">
+          <span class="pill-badge">${esc(t(loc, 'guild.rankYou', { rank: leaderboard.playerRank, div: leaderboard.division }))}</span>
+          <span class="pill-badge muted-pill">${leaderboard.playerRank === 1 ? esc(t(loc, 'guild.topRank')) : esc(t(loc, 'guild.nextRankMins', { min: leaderboard.minsToNextRank }))}</span>
+        </div>
+      </div>
+      <div class="chip-row" style="margin-bottom:10px">
+        ${RANKING_CATEGORIES.map((cat) => `
+          <button type="button" class="chip-btn${rankingCategory === cat ? ' active' : ''}" data-rank-cat="${esc(cat)}">
+            ${esc(cat === 'all' ? t(loc, 'common.all') : t(loc, `categories.${cat}`))}
+          </button>
+        `).join('')}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${leaderboard.entries.slice(0, 7).map((entry) => {
+          const compObj = COMPANIONS.find((c) => c.id === entry.companionId) || COMPANIONS[0];
+          const medal = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`;
+          return `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:12px;background:${entry.isSelf ? 'var(--emerald-soft)' : entry.isFriend ? 'var(--gold-soft)' : 'rgba(255,255,255,0.75)'};border:1px solid ${entry.isSelf ? 'var(--emerald)' : 'var(--glass-border)'};gap:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <strong style="min-width:28px">${esc(medal)}</strong>
+                <canvas width="32" height="32" data-thumb-src="${esc(compObj.idleSrc)}" style="width:32px;height:32px;image-rendering:pixelated"></canvas>
+                <div>
+                  <strong>${esc(entry.name)}</strong>
+                  <span class="muted" style="font-size:0.76rem"> • Lv.${entry.level} • ★Lv.${entry.compLevel || 1}</span>
+                  ${entry.badge ? `<span class="pill-badge" style="padding:1px 6px;font-size:0.68rem;margin-left:4px">${esc(entry.badge)}</span>` : ''}
+                </div>
+              </div>
+              <strong style="color:var(--emerald-dark)">${entry.minutes}m</strong>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </section>
+
+    <section class="card glass">
+      <div class="card-head">
+        <h2>📖 ${esc(t(loc, 'duel.bestiaryTitle'))}</h2>
+        <span class="pill-badge">${esc(t(loc, 'duel.discovered', { done: bestiary.discoveredCount, total: bestiary.totalMonsters }))}</span>
+      </div>
+      <div class="bestiary-grid">
+        ${bestiary.monsters.map((m) => `
+          <div class="monster-card${m.isBoss ? ' is-boss' : ''}${m.unlocked ? '' : ' locked'}">
+            <canvas width="48" height="48" data-thumb-src="${esc(m.idleSrc)}"></canvas>
+            <strong style="font-size:0.78rem">${esc(m.unlocked ? (m[loc] || m.en) : '???')}</strong>
+            <div class="chip-row" style="justify-content:center;gap:4px">
+              <span class="elem-pill elem-${esc(m.element)}">${esc(m.element)}</span>
+              <span class="pill-badge muted-pill" style="padding:1px 6px;font-size:0.68rem">W${m.worldId}${m.isBoss ? '★' : ''} • ×${m.defeatedCount}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+
+    <section class="card glass">
       <div class="card-head"><h2>💎 ${esc(t(loc, 'guild.gemsShelfTitle'))}</h2></div>
       <div class="chip-row">
         ${BREAK_GEMS.map((g) => `<span class="pill-badge muted-pill">💎 ${esc(t(loc, `gems.${g.id}.name`))} × ${Number(state.gemCollection?.[g.id]) || 0}</span>`).join('')}
@@ -1191,7 +1331,8 @@ function renderGuildTab(main) {
 
   if (duelSceneCleanup) duelSceneCleanup();
   duelSceneCleanup = startDuelRenderer(document.getElementById('guild-duel-canvas'), () => ({
-    worldSrc: rank.unlockedWorld.src,
+    worldSrc: duelWorldSrc,
+    stageLabel: duelStageLabel,
     left: duelLiveState.left,
     right: duelLiveState.right,
     leftHp: duelLiveState.leftHp,
@@ -1200,6 +1341,38 @@ function renderGuildTab(main) {
     bannerText: duelLiveState.bannerText,
     reducedMotion: state.settings?.reducedMotion
   }));
+
+  main.querySelectorAll('[data-duel-mode]').forEach((b) => {
+    b.addEventListener('click', () => {
+      if (duelTickTimer) { clearInterval(duelTickTimer); duelTickTimer = null; }
+      duelMode = b.dataset.duelMode;
+      duelLiveState = null;
+      renderGuildTab(main);
+    });
+  });
+
+  document.getElementById('duel-stage-select')?.addEventListener('change', (e) => {
+    if (duelTickTimer) { clearInterval(duelTickTimer); duelTickTimer = null; }
+    duelStageWorldId = Number(e.target.value) || 1;
+    duelLiveState = null;
+    renderGuildTab(main);
+  });
+
+  main.querySelectorAll('[data-duel-stage]').forEach((b) => {
+    b.addEventListener('click', () => {
+      if (duelTickTimer) { clearInterval(duelTickTimer); duelTickTimer = null; }
+      duelStageWorldId = Number(b.dataset.duelStage) || 1;
+      duelLiveState = null;
+      renderGuildTab(main);
+    });
+  });
+
+  main.querySelectorAll('[data-rank-cat]').forEach((b) => {
+    b.addEventListener('click', () => {
+      rankingCategory = b.dataset.rankCat;
+      renderGuildTab(main);
+    });
+  });
 
   main.querySelectorAll('[data-duel-rival]').forEach((b) => {
     b.addEventListener('click', () => {
@@ -1441,11 +1614,81 @@ function renderProofTab(main) {
   const activeTheme = canUseProofTheme(state, state.settings?.proofTheme) ? state.settings.proofTheme : 'emerald';
   const activeBlessing = getActiveBlessing(state, loc);
   const recentLedger = (state.proofLedger || []).slice(-6).reverse();
+  const cal = buildTimelapseCalendarMonth(state.sessions || [], cachedTimelapses || [], calendarYear, calendarMonth);
+  const weekSessions = (state.sessions || []).filter((s) => s.weekKey === wk);
+  const weekSec = calcTotalFocusSeconds(weekSessions);
+  const activeDays = new Set(weekSessions.map((s) => s.dayKey)).size;
+  const latestHash = (state.proofLedger || []).at(-1)?.entryHash || '00000000';
+  const myFighter = buildHeroFighter(state);
+  const myDuelCode = createDuelCode(state);
+  const snsLinks = buildSnsShareLinks({
+    locale: loc,
+    summary: { totalSeconds: weekSec, activeDays, proofHash: latestHash },
+    heroFighter: myFighter,
+    duelCode: myDuelCode,
+    pactCode: lastGeneratedPact
+  });
+  const coFocusBuddies = state.coFocusFriends || [];
+  const weekdaySunLabels = t(loc, 'weekdaysSunFirst');
 
   main.innerHTML = `
     <header class="page-header">
       <h1>${esc(t(loc, 'proof.title'))}</h1>
     </header>
+
+    <section class="card glass">
+      <div class="card-head">
+        <h2>📅 ${esc(t(loc, 'proof.calendarTitle'))}</h2>
+        <div class="chip-row" style="align-items:center">
+          <button type="button" id="cal-prev-btn" class="btn btn-secondary btn-sm">◀</button>
+          <span class="pill-badge">${esc(cal.monthLabel)} • ${cal.totalMonthMinutes}m</span>
+          <button type="button" id="cal-next-btn" class="btn btn-secondary btn-sm">▶</button>
+        </div>
+      </div>
+      <div class="calendar-weekdays">
+        ${weekdaySunLabels.map((lbl) => `<span>${esc(lbl)}</span>`).join('')}
+      </div>
+      <div class="calendar-grid">
+        ${cal.cells.map((cell) => cell.empty ? `<div class="cal-day is-empty"></div>` : `
+          <div class="cal-day${cell.minutes > 0 ? ' has-focus' : ''}${cell.timelapseId ? ' has-tl' : ''}" ${cell.timelapseId ? `data-play-tl="${esc(cell.timelapseId)}"` : ''} title="${esc(cell.dayKey)}: ${cell.minutes}m">
+            ${cell.thumbDataUrl ? `<div class="cal-thumb" style="background-image:url('${esc(cell.thumbDataUrl)}')"></div>` : ''}
+            <span class="cal-day-num">${cell.day}</span>
+            ${cell.minutes > 0 ? `<span class="cal-mins">${cell.minutes}m</span>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </section>
+
+    <section class="card glass">
+      <div class="card-head">
+        <h2>📣 ${esc(t(loc, 'proof.snsTitle'))}</h2>
+      </div>
+      <div class="sns-hub-grid">
+        <a href="${esc(snsLinks.xUrl)}" target="_blank" rel="noopener noreferrer" id="sns-share-x-btn" class="sns-btn sns-x">𝕏 ${esc(t(loc, 'proof.shareX'))}</a>
+        <a href="${esc(snsLinks.lineUrl)}" target="_blank" rel="noopener noreferrer" id="sns-share-line-btn" class="sns-btn sns-line">💬 ${esc(t(loc, 'proof.shareLine'))}</a>
+        <button type="button" id="sns-copy-discord-btn" class="sns-btn">📋 ${esc(t(loc, 'proof.shareDiscord'))}</button>
+        <button type="button" id="sns-story-png-btn" class="sns-btn sns-story">${hasHdAccess(state) ? '' : '🔒 '}📱 ${esc(t(loc, 'proof.storyCardBtn'))}</button>
+      </div>
+      ${lastStoryUrl ? `
+        <div class="chip-row" style="margin-top:10px;align-items:center">
+          <button type="button" id="save-story-png-btn" class="btn btn-secondary btn-sm">⬇ ${esc(t(loc, 'proof.savePng'))}</button>
+          <button type="button" id="share-story-png-btn" class="btn btn-gold btn-sm">${esc(t(loc, 'proof.shareCard'))}</button>
+        </div>
+        <img src="${esc(lastStoryUrl)}" class="preview-img" style="max-width:220px;margin-top:10px" alt="9:16 Story Card">
+      ` : ''}
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button type="button" id="beacon-copy-btn" class="btn btn-secondary btn-sm">🔥 ${esc(t(loc, 'proof.beaconCopy'))}</button>
+        <input id="beacon-friend-input" type="text" placeholder="${esc(t(loc, 'proof.beaconPlaceholder'))}" style="flex:1;min-width:170px">
+        <button type="button" id="beacon-add-btn" class="btn btn-primary btn-sm">${esc(t(loc, 'proof.beaconAdd'))}</button>
+      </div>
+      ${coFocusBuddies.length > 0 ? `
+        <div class="campfire-list">
+          ${coFocusBuddies.map((f) => `
+            <span class="campfire-buddy">🔥 ${esc(f.name)} (Lv.${f.level || 1} • ★Lv.${f.compLevel || 1} • ${f.recentMinutes || 0}m)</span>
+          `).join('')}
+        </div>
+      ` : ''}
+    </section>
 
     <section class="card glass">
       <div class="card-head">
@@ -1588,6 +1831,91 @@ function renderProofTab(main) {
         return;
       }
       setState((prev) => ({ ...prev, settings: { ...prev.settings, proofTheme: tid } }));
+    });
+  });
+
+  document.getElementById('cal-prev-btn')?.addEventListener('click', () => {
+    calendarMonth -= 1;
+    if (calendarMonth < 0) {
+      calendarMonth = 11;
+      calendarYear -= 1;
+    }
+    renderProofTab(main);
+  });
+
+  document.getElementById('cal-next-btn')?.addEventListener('click', () => {
+    calendarMonth += 1;
+    if (calendarMonth > 11) {
+      calendarMonth = 0;
+      calendarYear += 1;
+    }
+    renderProofTab(main);
+  });
+
+  document.getElementById('sns-copy-discord-btn')?.addEventListener('click', async () => {
+    await shareText('Craft Glass Proof & Duel', snsLinks.discordText);
+    showToast(t(loc, 'common.copied'));
+  });
+
+  document.getElementById('sns-story-png-btn')?.addEventListener('click', async () => {
+    if (!pro && getRewardPasses(state) < 1) {
+      openCraftProDialog();
+      return;
+    }
+    if (!pro) {
+      const used = consumeRewardPass(state);
+      if (!used.consumed) {
+        openCraftProDialog();
+        return;
+      }
+      setState(used.state);
+      showToast(t(loc, 'pro.passUsedMsg'));
+    }
+    const summary = await buildWeeklyProofSummary(state, wk);
+    const frames = cachedTimelapses.filter((tl) => tl.weekKey === wk).flatMap((tl) => tl.frames || []).slice(0, 4);
+    const blob = await generateVerticalStoryCardBlob({
+      state,
+      summary,
+      heroFighter: myFighter,
+      duelCode: myDuelCode,
+      timelapseFrames: frames,
+      locale: loc
+    });
+    if (lastStoryUrl) URL.revokeObjectURL(lastStoryUrl);
+    lastStoryBlob = blob;
+    lastStoryUrl = URL.createObjectURL(blob);
+    await saveBlobFile(`craft-glass-story-${wk}.png`, blob);
+    renderProofTab(main);
+  });
+
+  document.getElementById('save-story-png-btn')?.addEventListener('click', () => {
+    if (lastStoryBlob) saveBlobFile(`craft-glass-story-${wk}.png`, lastStoryBlob);
+  });
+
+  document.getElementById('share-story-png-btn')?.addEventListener('click', () => {
+    if (lastStoryBlob) shareBlobFile(`craft-glass-story-${wk}.png`, 'Craft Glass 9:16 Story', lastStoryBlob);
+  });
+
+  document.getElementById('beacon-copy-btn')?.addEventListener('click', async () => {
+    const code = createCoFocusBeacon(state);
+    await shareText('Craft Glass Campfire Beacon', code);
+    showToast(t(loc, 'common.copied'));
+  });
+
+  document.getElementById('beacon-add-btn')?.addEventListener('click', () => {
+    const raw = document.getElementById('beacon-friend-input')?.value.trim() || '';
+    const parsed = parseCoFocusBeacon(raw);
+    if (!parsed.valid) {
+      showToast(t(loc, 'errors.invalidInput'));
+      return;
+    }
+    soundEngine.play('pass');
+    setState((prev) => {
+      const existing = (prev.coFocusFriends || []).filter((f) => f.name !== parsed.beacon.name);
+      return {
+        ...prev,
+        coFocusFriends: [parsed.beacon, ...existing].slice(0, 8)
+      };
     });
   });
 
@@ -1793,6 +2121,8 @@ function openTimelapsePlayer(tl) {
 
 function renderInsightsTab(main) {
   const loc = locale();
+  const wk = weekKeyNow();
+  const pro = isProActive(state);
   const today = getLocalDayKey();
   const dayTotals = new Map();
   const catTotals = new Map();
@@ -1805,6 +2135,8 @@ function renderInsightsTab(main) {
   const heatDays = Array.from({ length: 90 }, (_, i) => addDaysToKey(today, -(89 - i)));
   const totalCatSec = Math.max(1, calcTotalFocusSeconds(state.sessions));
   const recentLogs = (state.sessions || []).slice(0, 12);
+  const audit = adminUnlocked ? getAdminAuditReport(state) : null;
+  const roster = state.adminRoster || [];
 
   main.innerHTML = `
     <header class="page-header">
@@ -1897,6 +2229,85 @@ function renderInsightsTab(main) {
         <button type="button" id="open-guide-link" class="btn btn-secondary btn-sm">${esc(t(loc, 'insights.guideBtn'))}</button>
       </div>
     </section>
+
+    <section class="card glass">
+      <div class="card-head">
+        <h2>🛡️ ${esc(t(loc, 'insights.adminTitle'))}</h2>
+        <div class="chip-row">
+          ${!pro && getRewardPasses(state) > 0 ? `<span class="pill-badge">🎫 ${esc(t(loc, 'pro.passBalance', { count: getRewardPasses(state) }))}</span>` : ''}
+          ${!pro ? `<button type="button" id="admin-watch-ad-btn" class="btn btn-secondary btn-sm">📺 ${esc(t(loc, 'pro.watchAdPassBtn'))}</button>` : ''}
+          ${adminUnlocked ? `<button type="button" id="admin-lock-btn" class="btn btn-secondary btn-sm">🔒 ${esc(t(loc, 'insights.adminLockBtn'))}</button>` : ''}
+        </div>
+      </div>
+      ${!adminUnlocked ? `
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="admin-pin-input" type="password" maxlength="8" placeholder="${esc(t(loc, 'insights.adminPinPlaceholder'))}" style="width:170px">
+          <button type="button" id="admin-unlock-btn" class="btn btn-primary btn-sm">🔓 ${esc(t(loc, 'insights.adminUnlockBtn'))}</button>
+        </div>
+      ` : `
+        <div class="chip-row" style="margin-bottom:10px;justify-content:space-between;align-items:center">
+          <div class="chip-row">
+            <span class="pill-badge">${audit.totalSessions} ${loc === 'ja' ? '記録' : 'Logs'}</span>
+            <span class="pill-badge muted-pill">✓ ${audit.verifiedSessions}</span>
+            <span class="pill-badge muted-pill">✎ ${audit.correctedSessions}</span>
+            <span class="pill-badge muted-pill">👥 ${roster.length}/${pro ? '∞' : '3'}</span>
+          </div>
+          <button type="button" id="admin-export-csv-btn" class="btn btn-gold btn-sm">${hasHdAccess(state) ? '' : '🔒 '}⬇ ${esc(t(loc, 'insights.adminExportCsv'))}</button>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:12px">
+          <div>
+            <h3>${esc(t(loc, 'insights.adminPointsTitle'))}</h3>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <input id="admin-pt-delta" type="number" value="10" style="width:80px">
+              <input id="admin-pt-reason" type="text" placeholder="Bonus / Audit" style="flex:1;min-width:110px">
+              <button type="button" id="admin-pt-apply-btn" class="btn btn-primary btn-sm">± Pt</button>
+            </div>
+          </div>
+          <div>
+            <h3>PIN</h3>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <input id="admin-new-pin" type="password" maxlength="8" placeholder="${esc(t(loc, 'insights.adminNewPinPlaceholder'))}" style="flex:1;min-width:130px">
+              <button type="button" id="admin-save-pin-btn" class="btn btn-secondary btn-sm">${esc(t(loc, 'common.save'))}</button>
+            </div>
+          </div>
+        </div>
+
+        <h3>👥 ${esc(t(loc, 'insights.adminRosterTitle'))} (${roster.length}/${pro ? '∞' : '3'})</h3>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <input id="admin-roster-input" type="text" placeholder="CGP1:... / CGF1:... / Name" style="flex:1;min-width:170px">
+          <button type="button" id="admin-roster-add-btn" class="btn btn-primary btn-sm">${!pro && roster.length >= 3 && getRewardPasses(state) < 1 ? '🔒 ' : ''}+ ${esc(t(loc, 'common.add'))}</button>
+        </div>
+        ${roster.length > 0 ? `
+          <div style="margin-bottom:12px">
+            ${roster.map((m) => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid #e2e8f0;gap:8px">
+                <div>
+                  <strong>${esc(m.name)}</strong>
+                  <span class="muted"> • ${formatMinutes(loc, m.totalSeconds || 0)} • ${m.activeDays || 0}d</span>
+                </div>
+                <button type="button" class="btn btn-danger btn-sm" data-admin-del-member="${esc(m.id)}">✕</button>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+
+        ${audit.sessions.slice(0, 12).map((s) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid #e2e8f0;gap:8px;flex-wrap:wrap">
+            <div>
+              <strong>${esc(s.dayKey)} • ${esc(t(loc, `categories.${s.category}`))} (${s.minutes}m)</strong>
+              ${s.wasCorrected ? `<span class="pill-badge muted-pill">${esc(t(loc, 'insights.adminCorrectedBadge'))} ${s.originalMinutes}m→${s.minutes}m</span>` : ''}
+            </div>
+            <div class="chip-row">
+              ${s.verifiedByAdmin
+                ? `<span class="pill-badge">${esc(t(loc, 'insights.adminVerifiedBadge'))}</span>`
+                : `<button type="button" class="btn btn-secondary btn-sm" data-admin-verify="${esc(s.id)}">${esc(t(loc, 'insights.adminVerifyBtn'))}</button>`}
+              <button type="button" class="btn btn-danger btn-sm" data-admin-del-sess="${esc(s.id)}">✕</button>
+            </div>
+          </div>
+        `).join('')}
+      `}
+    </section>
   `;
 
   main.querySelectorAll('[data-correct-log]').forEach((b) => {
@@ -1958,6 +2369,140 @@ function renderInsightsTab(main) {
     }
   };
   document.getElementById('open-guide-link').onclick = openGuideDialog;
+
+  document.getElementById('admin-watch-ad-btn')?.addEventListener('click', () => {
+    const ok = showRewardedAd();
+    if (!ok) showToast(t(loc, 'pro.adWebNotice'));
+  });
+
+  document.getElementById('admin-unlock-btn')?.addEventListener('click', () => {
+    const pin = document.getElementById('admin-pin-input')?.value || '';
+    if (!verifyAdminPin(state, pin)) {
+      showToast(t(loc, 'insights.adminWrongPin'));
+      return;
+    }
+    adminUnlocked = true;
+    soundEngine.play('pass');
+    renderInsightsTab(main);
+  });
+
+  document.getElementById('admin-lock-btn')?.addEventListener('click', () => {
+    adminUnlocked = false;
+    renderInsightsTab(main);
+  });
+
+  document.getElementById('admin-save-pin-btn')?.addEventListener('click', () => {
+    const nextPin = document.getElementById('admin-new-pin')?.value || '';
+    const res = updateAdminPin(state, nextPin);
+    if (!res.ok) {
+      showToast(t(loc, 'errors.invalidInput'));
+      return;
+    }
+    setState(res.state);
+    showToast(t(loc, 'insights.adminPinUpdated'));
+  });
+
+  document.getElementById('admin-pt-apply-btn')?.addEventListener('click', () => {
+    const delta = Number(document.getElementById('admin-pt-delta')?.value) || 0;
+    const reason = document.getElementById('admin-pt-reason')?.value.trim() || 'Coach adjustment';
+    const res = adminAdjustPoints(state, delta, reason);
+    if (res.changed) {
+      soundEngine.play('correct');
+      setState(res.state);
+      showToast(`${delta > 0 ? '+' : ''}${delta} pt`);
+    }
+  });
+
+  document.getElementById('admin-export-csv-btn')?.addEventListener('click', async () => {
+    if (!pro && getRewardPasses(state) < 1) {
+      openCraftProDialog();
+      return;
+    }
+    if (!pro) {
+      const used = consumeRewardPass(state);
+      if (!used.consumed) {
+        openCraftProDialog();
+        return;
+      }
+      setState(used.state);
+      showToast(t(loc, 'pro.passUsedMsg'));
+    }
+    const csv = exportAdminCsv(state);
+    await saveBlobFile(`craft-glass-admin-${today}.csv`, new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  });
+
+  document.getElementById('admin-roster-add-btn')?.addEventListener('click', async () => {
+    const raw = document.getElementById('admin-roster-input')?.value.trim() || '';
+    if (!raw) return;
+    let workingState = state;
+    if (!pro && (workingState.adminRoster || []).length >= 3) {
+      if (getRewardPasses(workingState) < 1) {
+        openCraftProDialog();
+        return;
+      }
+      const used = consumeRewardPass(workingState);
+      if (!used.consumed) {
+        openCraftProDialog();
+        return;
+      }
+      workingState = used.state;
+      showToast(t(loc, 'pro.passUsedMsg'));
+    }
+    let entry = { name: raw.slice(0, 32), weekKey: wk, totalSeconds: 0, activeDays: 1, lastCode: raw };
+    if (raw.startsWith('CGP1:')) {
+      const decoded = await decodeProofPact(raw);
+      if (decoded.valid) {
+        entry = {
+          id: `pact_${decoded.deviceId || decoded.name}`,
+          name: decoded.name,
+          weekKey: decoded.weekKey,
+          totalSeconds: decoded.totalSeconds,
+          activeDays: decoded.activeDays,
+          timelapseFrames: decoded.timelapseFrames,
+          lastCode: raw
+        };
+      }
+    } else if (raw.startsWith('CGF1:')) {
+      const parsed = parseCoFocusBeacon(raw);
+      if (parsed.valid) {
+        entry = {
+          id: `beacon_${parsed.beacon.name}`,
+          name: parsed.beacon.name,
+          weekKey: wk,
+          totalSeconds: (parsed.beacon.recentMinutes || 0) * 60,
+          activeDays: 1,
+          lastCode: raw
+        };
+      }
+    }
+    const res = adminUpsertRosterMember(workingState, entry);
+    soundEngine.play('pass');
+    setState(res.state);
+  });
+
+  main.querySelectorAll('[data-admin-del-member]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const res = adminRemoveRosterMember(state, b.dataset.adminDelMember);
+      if (res.removed) setState(res.state);
+    });
+  });
+
+  main.querySelectorAll('[data-admin-verify]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const res = adminVerifySession(state, b.dataset.adminVerify, true);
+      if (res.changed) {
+        soundEngine.play('correct');
+        setState(res.state);
+      }
+    });
+  });
+
+  main.querySelectorAll('[data-admin-del-sess]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const res = adminDeleteSession(state, b.dataset.adminDelSess);
+      if (res.deleted) setState(res.state);
+    });
+  });
 }
 
 function openCraftProDialog(noticeMsg = '') {
@@ -2008,6 +2553,11 @@ function openCraftProDialog(noticeMsg = '') {
           <td><strong>${esc(t(loc, 'pro.featureRooms'))}</strong></td>
           <td>${esc(t(loc, 'pro.featureRoomsFree'))}</td>
           <td><strong>${esc(t(loc, 'pro.featureRoomsPro'))}</strong></td>
+        </tr>
+        <tr>
+          <td><strong>${esc(t(loc, 'pro.featureAdmin'))}</strong></td>
+          <td>${esc(t(loc, 'pro.featureAdminFree'))}</td>
+          <td><strong>${esc(t(loc, 'pro.featureAdminPro'))}</strong></td>
         </tr>
       </tbody>
     </table>

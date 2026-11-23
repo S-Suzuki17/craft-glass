@@ -38,7 +38,7 @@ export function createInitialState({ locale = detectLocale(), nowMs = Date.now()
     },
     points: 0,
     ownedGear: ['head-bandana', 'body-cloth', 'weapon-pencil', 'shield-none'],
-    ownedCompanions: ['twigfox', 'acornling'],
+    ownedCompanions: ['twigfox'],
     ownedRooms: ['mint', 'forest'],
     purchaseHistory: [],
     equipped: {

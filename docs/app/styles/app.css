@@ -358,7 +358,9 @@ progress.craft-progress::-webkit-progress-value { background: var(--emerald); bo
   display: block;
   border-radius: 16px;
   image-rendering: pixelated;
+  image-rendering: crisp-edges;
   background: #0f3d35;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22), 0 8px 20px -8px rgba(6, 78, 59, 0.35);
 }
 
 .item-grid {
@@ -382,6 +384,7 @@ progress.craft-progress::-webkit-progress-value { background: var(--emerald); bo
   height: 56px;
   object-fit: cover;
   image-rendering: pixelated;
+  image-rendering: crisp-edges;
   border-radius: 10px;
 }
 
@@ -533,6 +536,183 @@ progress.craft-progress::-webkit-progress-value { background: var(--emerald); bo
   .sidebar { display: none; }
   .mobile-brand { display: flex; }
   .mobile-nav { display: flex; }
+}
+
+/* Monthly Timelapse Calendar Grid (.calendar-grid) */
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 4px;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.cal-day {
+  position: relative;
+  min-height: 54px;
+  padding: 5px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-strong);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  overflow: hidden;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--ink);
+  transition: transform 100ms, border-color 140ms;
+}
+.cal-day.is-empty {
+  background: rgba(226, 232, 240, 0.35);
+  border-color: transparent;
+  pointer-events: none;
+}
+.cal-day.has-focus {
+  border-color: rgba(15, 118, 110, 0.32);
+  background: rgba(209, 250, 229, 0.45);
+}
+.cal-day.has-tl {
+  cursor: pointer;
+  border-color: var(--emerald);
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+}
+.cal-day.has-tl:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px -4px rgba(6, 78, 59, 0.28);
+}
+.cal-thumb {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(1.5px) brightness(0.78);
+  z-index: 0;
+}
+.cal-day-num, .cal-mins {
+  position: relative;
+  z-index: 1;
+}
+.cal-mins {
+  align-self: flex-end;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: rgba(15, 118, 110, 0.16);
+  color: var(--emerald-dark);
+}
+.cal-day.has-tl .cal-mins {
+  background: rgba(6, 78, 59, 0.82);
+  color: #a7f3d0;
+}
+
+/* Monster Codex Bestiary Grid (.bestiary-grid) */
+.bestiary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 8px;
+}
+.monster-card {
+  position: relative;
+  border-radius: 14px;
+  padding: 10px 8px;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 5px;
+}
+.monster-card.is-boss {
+  border-color: rgba(217, 119, 6, 0.45);
+  background: linear-gradient(180deg, rgba(254, 243, 199, 0.55), rgba(255, 255, 255, 0.92));
+}
+.monster-card img, .monster-card canvas {
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  object-fit: contain;
+}
+.monster-card.locked {
+  opacity: 0.68;
+  background: rgba(241, 245, 249, 0.75);
+}
+.monster-card.locked img, .monster-card.locked canvas {
+  filter: brightness(0) opacity(0.38);
+}
+.elem-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.elem-verdant { background: #d1fae5; color: #065f46; }
+.elem-ember { background: #ffedd5; color: #9a3412; }
+.elem-tide { background: #e0f2fe; color: #075985; }
+.elem-gale { background: #f3e8ff; color: #6b21a8; }
+.elem-astral { background: #fef3c7; color: #92400e; }
+
+/* SNS Share & Co-Focus Campfire Grid (.sns-hub-grid) */
+.sns-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 8px;
+}
+.sns-btn {
+  min-height: 42px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-strong);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.84rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.sns-btn.sns-x { background: #0f172a; color: #fff; border-color: #0f172a; }
+.sns-btn.sns-line { background: #06c755; color: #fff; border-color: #06c755; }
+.sns-btn.sns-story {
+  background: linear-gradient(135deg, #065f46, #0f766e);
+  color: #fde68a;
+  border-color: #065f46;
+}
+.campfire-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.campfire-buddy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 12px;
+  background: var(--emerald-soft);
+  color: var(--emerald-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 @media (prefers-reduced-motion: reduce) {
