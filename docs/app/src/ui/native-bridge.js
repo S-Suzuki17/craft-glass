@@ -15,7 +15,7 @@ export function getAppInfo() {
   } catch {
     // Fallback to web info
   }
-  return { platform: 'web', versionName: '1.0.0', versionCode: 1 };
+  return { platform: 'web', versionName: '1.0.2', versionCode: 3 };
 }
 
 export async function setKeepScreenOn(enabled) {
@@ -208,6 +208,48 @@ export function restoreProPurchases() {
   if (isNativeAndroid() && typeof globalThis.window.CraftGlassNative.restorePurchases === 'function') {
     try {
       globalThis.window.CraftGlassNative.restorePurchases();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+const adListeners = new Set();
+
+export function onAdEvent(fn) {
+  if (typeof fn !== 'function') return () => {};
+  adListeners.add(fn);
+  return () => adListeners.delete(fn);
+}
+
+globalThis.window.__onCraftGlassAdEvent = (payload) => {
+  let data = payload;
+  if (typeof payload === 'string') {
+    try { data = JSON.parse(payload); } catch { return; }
+  }
+  for (const fn of adListeners) {
+    try { fn(data); } catch {}
+  }
+};
+
+export function setAdBannerSuppressed(suppressed) {
+  if (isNativeAndroid() && typeof globalThis.window.CraftGlassNative.setAdBannerSuppressed === 'function') {
+    try {
+      globalThis.window.CraftGlassNative.setAdBannerSuppressed(Boolean(suppressed));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+export function showRewardedAd() {
+  if (isNativeAndroid() && typeof globalThis.window.CraftGlassNative.showRewardedAd === 'function') {
+    try {
+      globalThis.window.CraftGlassNative.showRewardedAd();
       return true;
     } catch {
       return false;

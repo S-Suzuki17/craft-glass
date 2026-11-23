@@ -29,7 +29,8 @@ export function createInitialState({ locale = detectLocale(), nowMs = Date.now()
     entitlement: {
       isPro: false,
       activeSku: null,
-      verifiedAt: null
+      verifiedAt: null,
+      rewardPasses: 0
     },
     profile: {
       displayName: locale === 'ja' ? 'クラフト冒険者' : 'Craft Explorer',
@@ -113,7 +114,11 @@ export function loadState() {
       settings: { ...base.settings, ...(parsed.settings || {}) },
       profile: { ...base.profile, ...(parsed.profile || {}) },
       equipped: { ...base.equipped, ...(parsed.equipped || {}) },
-      entitlement: { ...base.entitlement, ...(parsed.entitlement || {}) }
+      entitlement: {
+        ...base.entitlement,
+        ...(parsed.entitlement || {}),
+        rewardPasses: Math.max(0, Math.floor(Number(parsed.entitlement?.rewardPasses || 0)))
+      }
     };
   } catch {
     return createInitialState();
@@ -150,6 +155,10 @@ export function parseStateBackupJson(jsonText) {
     settings: { ...base.settings, ...(candidate.settings || {}) },
     profile: { ...base.profile, ...(candidate.profile || {}) },
     equipped: { ...base.equipped, ...(candidate.equipped || {}) },
-    entitlement: { ...base.entitlement, ...(candidate.entitlement || {}) }
+    entitlement: {
+      ...base.entitlement,
+      ...(candidate.entitlement || {}),
+      rewardPasses: Math.max(0, Math.floor(Number(candidate.entitlement?.rewardPasses || 0)))
+    }
   };
 }

@@ -66,6 +66,10 @@ import {
   PRO_SKUS,
   PROOF_CARD_THEMES,
   isProActive,
+  getRewardPasses,
+  hasHdAccess,
+  grantRewardPass,
+  consumeRewardPass,
   getPlanLimits,
   canAddFsrsCard,
   canUseProofTheme,
@@ -73,7 +77,14 @@ import {
   applyBillingEntitlement
 } from './core/pro-entitlements.js';
 import { soundEngine } from './ui/audio.js';
-import { startSceneRenderer, renderStaticSpriteThumb } from './ui/pixel-renderer.js';
+import { startSceneRenderer, startDuelRenderer, renderStaticSpriteThumb } from './ui/pixel-renderer.js';
+import {
+  buildHeroFighter,
+  createDuelCode,
+  parseDuelCode,
+  GUILD_RIVALS,
+  simulateAutoDuel
+} from './core/duel-arena.js';
 import {
   DeskCameraRecorder,
   saveTimelapseSession,
@@ -87,6 +98,9 @@ import { generateProofCardBlob } from './ui/proof-card.js';
 import {
   isNativeAndroid,
   setKeepScreenOn,
+  setAdBannerSuppressed,
+  showRewardedAd,
+  onAdEvent,
   vibrate,
   shareText,
   saveBlobFile,
@@ -109,6 +123,12 @@ const esc = (str) => String(str ?? '')
 let state = loadState();
 let activeTab = 'pool';
 let sceneCleanup = null;
+let duelSceneCleanup = null;
+let duelTickTimer = null;
+let duelSelectedId = GUILD_RIVALS[0].id;
+let duelCustomFighter = null;
+let duelCustomCode = '';
+let duelLiveState = null;
 let focusSceneCleanup = null;
 let lastProofBlob = null;
 let lastProofUrl = null;
@@ -275,17 +295,16 @@ function renderPoolTab(main) {
   main.innerHTML = `
     <header class="page-header">
       <h1>${esc(t(loc, 'pool.title'))}</h1>
-      <p>${esc(t(loc, 'pool.subtitle'))} (${weekDates[0]} – ${weekDates[6]})</p>
+      <p>${weekDates[0]} – ${weekDates[6]}</p>
     </header>
 
     <div class="grid-2">
       <section class="card glass">
         <div class="card-head">
           <h2>${esc(t(loc, 'pool.weeklyStreak'))}</h2>
-          <span class="pill-badge">${streak} ${loc === 'ja' ? '週連続' : 'weeks'}</span>
+          <span class="pill-badge">🔥 ${streak} ${loc === 'ja' ? '週' : 'w'}</span>
         </div>
         <div class="stat-value">${summary.overallPercent}%</div>
-        <p class="muted">${esc(t(loc, 'pool.streakDesc', { n: streak }))}</p>
         <progress class="craft-progress" max="100" value="${summary.overallPercent}"></progress>
       </section>
 
@@ -586,7 +605,6 @@ function renderFocusTab(main) {
   main.innerHTML = `
     <header class="page-header">
       <h1>${esc(t(loc, 'focus.title'))}</h1>
-      <p>${esc(t(loc, 'focus.cameraHint'))}</p>
     </header>
 
     ${activePending.length > 0 ? `
@@ -708,6 +726,7 @@ async function startFocusSession() {
   soundEngine.play('start');
   soundEngine.startAmbient(liveTimer.ambient);
   setKeepScreenOn(true);
+  setAdBannerSuppressed(true);
   renderFocusOverlay();
 }
 
@@ -720,6 +739,7 @@ async function renderFocusOverlay() {
     cameraRecorder.stopPreview();
     soundEngine.stopAmbient();
     setKeepScreenOn(false);
+    setAdBannerSuppressed(false);
     return;
   }
 
@@ -747,7 +767,6 @@ async function renderFocusOverlay() {
         <div id="ov-clock" class="timer-digits">00:00</div>
         <p id="ov-subclock" style="margin:4px 0 12px;color:#a7f3d0"></p>
         <canvas id="ov-rpg-canvas" class="scene-canvas" width="360" height="140" style="max-width:360px;margin:0 auto"></canvas>
-        <p style="margin:10px 0 0;font-size:0.84rem;color:#d1fae5">${esc(t(loc, 'focus.justWatchNote'))}</p>
       </div>
 
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
@@ -898,18 +917,16 @@ function openFinishSummaryDialog(session) {
       <button type="button" class="icon-btn" id="sum-close">✕</button>
     </div>
     <p class="stat-value">+${mins} EXP</p>
-    <p>${esc(t(loc, 'focus.summaryExp', { exp: mins }))}</p>
-    ${session.frameCount > 0 ? `<p class="muted">📷 ${esc(t(loc, 'focus.summaryFrames', { n: session.frameCount }))}</p>` : ''}
+    ${session.frameCount > 0 ? `<p class="muted">📷 ${session.frameCount}</p>` : ''}
     ${gem ? `
-      <div class="card" style="background:var(--gold-soft);margin:12px 0">
-        <strong>💎 ${esc(t(loc, `gems.${gem.gemId}.name`))} (${esc(t(loc, `gems.${gem.gemId}.mineral`))})</strong>
-        <p class="muted" style="margin:4px 0 8px">${esc(t(loc, 'focus.gemAppeared', { name: t(loc, `gems.${gem.gemId}.name`), mineral: t(loc, `gems.${gem.gemId}.mineral`) }))}</p>
+      <div class="card" style="background:var(--gold-soft);margin:12px 0;display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <strong>💎 ${esc(t(loc, `gems.${gem.gemId}.name`))}</strong>
         <button type="button" id="sum-break-btn" class="btn btn-gold btn-sm">${esc(t(loc, 'focus.openBreak'))}</button>
       </div>
     ` : ''}
     ${pool ? `
       <div class="field" style="margin-top:12px">
-        <label for="sum-pool-delta">${esc(t(loc, 'focus.progressAdd', { title: pool.title, unit: t(loc, `units.${pool.unit}`) }))}</label>
+        <label for="sum-pool-delta">${esc(pool.title)} (+${esc(t(loc, `units.${pool.unit}`))})</label>
         <div style="display:flex;gap:8px">
           <input id="sum-pool-delta" type="number" min="0" value="${pool.unit === 'min' ? mins : pool.chunkSize}">
           <button type="button" id="sum-pool-apply" class="btn btn-secondary">${esc(t(loc, 'common.save'))}</button>
@@ -917,7 +934,6 @@ function openFinishSummaryDialog(session) {
       </div>
     ` : ''}
     <hr style="border:none;border-top:1px solid #e2e8f0;margin:14px 0">
-    <p class="muted">${esc(t(loc, 'focus.summaryCorrectionHint'))}</p>
     <div style="display:flex;gap:8px;align-items:center">
       <input id="sum-fix-min" type="number" min="1" max="720" value="${mins}" style="width:110px">
       <button type="button" id="sum-fix-btn" class="btn btn-secondary btn-sm">${esc(t(loc, 'focus.applyCorrection'))}</button>
@@ -959,7 +975,6 @@ function openBreakDialog() {
       <h2>🏕️ ${esc(t(loc, 'focus.breakTitle'))}</h2>
       <button type="button" class="icon-btn" id="brk-close">✕</button>
     </div>
-    <p class="muted">${esc(t(loc, 'focus.breakDesc'))}</p>
     ${pending.length === 0 ? `<p class="muted">${esc(t(loc, 'common.none'))}</p>` : pending.map((g) => `
       <div class="card" style="background:var(--gold-soft);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px">
         <div>
@@ -1004,12 +1019,52 @@ function renderGuildTab(main) {
   const sealed = getSealedMonsters(state, wk);
   const unclaimedSeals = (state.sealEvents || []).filter((e) => !e.claimedAt);
   const dueCards = getDueCards(state.cards || []);
+  const myFighter = buildHeroFighter(state);
+  const activeRival = duelSelectedId === 'friend' && duelCustomFighter
+    ? duelCustomFighter
+    : (GUILD_RIVALS.find((r) => r.id === duelSelectedId) || GUILD_RIVALS[0]);
+
+  if (!duelLiveState || duelLiveState.right?.name !== activeRival.name || duelLiveState.left?.level !== myFighter.level) {
+    duelLiveState = {
+      left: myFighter,
+      right: activeRival,
+      leftHp: myFighter.maxHp,
+      rightHp: activeRival.maxHp,
+      activeTurn: null,
+      bannerText: '',
+      running: false
+    };
+  }
 
   main.innerHTML = `
     <header class="page-header">
       <h1>${esc(t(loc, 'guild.title'))}</h1>
       <p>${esc(t(loc, 'guild.worldLabel', { n: rank.unlockedWorld.id, name: rank.unlockedWorld[loc] || rank.unlockedWorld.en }))}</p>
     </header>
+
+    <section class="card glass">
+      <div class="card-head">
+        <h2>⚔️ ${esc(t(loc, 'duel.title'))}</h2>
+        <div class="chip-row">
+          <span class="pill-badge">HP ${myFighter.maxHp} • ATK ${myFighter.atk} • SPD ${myFighter.spd}</span>
+          <button type="button" id="duel-copy-code-btn" class="btn btn-secondary btn-sm">📋 ${esc(t(loc, 'duel.copyCode'))}</button>
+        </div>
+      </div>
+      <canvas id="guild-duel-canvas" class="scene-canvas" width="440" height="185"></canvas>
+      <div class="chip-row" style="margin-top:10px;justify-content:space-between;align-items:center">
+        <div class="chip-row">
+          ${GUILD_RIVALS.map((r) => `
+            <button type="button" class="chip-btn${duelSelectedId === r.id ? ' active' : ''}" data-duel-rival="${esc(r.id)}">Lv.${r.level} ${esc(r.name)}</button>
+          `).join('')}
+          ${duelCustomFighter ? `<button type="button" class="chip-btn${duelSelectedId === 'friend' ? ' active' : ''}" data-duel-rival="friend">Lv.${duelCustomFighter.level} ${esc(duelCustomFighter.name)}</button>` : ''}
+        </div>
+        <button type="button" id="duel-fight-btn" class="btn btn-gold btn-sm">${esc(t(loc, 'duel.fightBtn'))}</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input id="duel-friend-input" type="text" value="${esc(duelCustomCode)}" placeholder="${esc(t(loc, 'duel.pasteCode'))}" style="flex:1">
+        <button type="button" id="duel-load-friend-btn" class="btn btn-secondary btn-sm">${esc(t(loc, 'duel.vsFriend'))}</button>
+      </div>
+    </section>
 
     <section class="card glass">
       <canvas id="guild-hero-canvas" class="scene-canvas" width="440" height="200"></canvas>
@@ -1021,13 +1076,6 @@ function renderGuildTab(main) {
         <div class="muted">${formatMinutes(loc, totalSec)} / ${loc === 'ja' ? '400時間' : '400h'}</div>
       </div>
       <progress class="craft-progress" max="100" value="${rank.percent}"></progress>
-      <p class="muted">${rank.nextRank
-        ? esc(t(loc, 'guild.nextRank', {
-            rank: rank.nextRank.rank,
-            title: rank.nextRank.title,
-            remaining: formatMinutes(loc, rank.nextRank.remainingMinutes * 60)
-          }))
-        : esc(t(loc, 'guild.maxRank'))}</p>
     </section>
 
     <div class="grid-2">
@@ -1036,13 +1084,13 @@ function renderGuildTab(main) {
           <h2>${esc(t(loc, 'guild.expeditionTitle'))}</h2>
           <span class="pill-badge">${esc(t(loc, `expeditionTiers.${expedition.tierId}`))}</span>
         </div>
-        <p class="muted">${esc(t(loc, 'guild.expeditionDesc'))}</p>
         <p><strong>${esc(t(loc, 'guild.effectiveWeek', { eff: formatMinutes(loc, expedition.effectiveSeconds), days: expedition.activeDays }))}</strong></p>
         <progress class="craft-progress" max="18000" value="${Math.min(18000, expedition.effectiveSeconds)}"></progress>
-        <p class="muted" style="margin-top:8px">${expedition.campBonus ? esc(t(loc, 'guild.campBonusActive')) : esc(t(loc, 'guild.campBonusLocked'))}</p>
-        ${expedition.claimablePoints > 0
-          ? `<button type="button" id="claim-expedition-btn" class="btn btn-gold">${esc(t(loc, 'guild.claimExpedition', { pt: expedition.claimablePoints }))}</button>`
-          : `<span class="muted">${esc(t(loc, 'guild.expeditionClaimed', { pt: expedition.claimedPoints }))}</span>`}
+        <div style="margin-top:10px">
+          ${expedition.claimablePoints > 0
+            ? `<button type="button" id="claim-expedition-btn" class="btn btn-gold">${esc(t(loc, 'guild.claimExpedition', { pt: expedition.claimablePoints }))}</button>`
+            : `<span class="muted">${esc(t(loc, 'guild.expeditionClaimed', { pt: expedition.claimedPoints }))}</span>`}
+        </div>
       </section>
 
       <section class="card glass">
@@ -1050,13 +1098,12 @@ function renderGuildTab(main) {
           <h2>${esc(t(loc, 'fsrs.title'))}</h2>
           <span class="pill-badge">${esc(t(loc, 'fsrs.dueNow', { n: dueCards.length }))}</span>
         </div>
-        <p class="muted">${esc(t(loc, 'guild.sealedDesc'))}</p>
         <div class="chip-row" style="margin-bottom:10px">
           <button type="button" id="open-fsrs-review-btn" class="btn btn-primary btn-sm" ${dueCards.length === 0 ? 'disabled' : ''}>🧠 ${esc(t(loc, 'fsrs.startReview'))}</button>
           <button type="button" id="open-fsrs-add-btn" class="btn btn-secondary btn-sm">${esc(t(loc, 'fsrs.newCard'))}</button>
           ${unclaimedSeals.length > 0 ? `<button type="button" id="claim-seals-btn" class="btn btn-gold btn-sm">${esc(t(loc, 'guild.claimSeals', { pt: unclaimedSeals.length * 2 }))}</button>` : ''}
         </div>
-        ${sealed.length === 0 ? `<p class="muted">${esc(t(loc, 'guild.noSealed'))}</p>` : sealed.map((m) => `
+        ${sealed.length === 0 ? `<p class="muted">${esc(t(loc, 'common.done'))}</p>` : sealed.map((m) => `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid #e2e8f0;gap:8px">
             <div>
               <strong>${esc(loc === 'ja' ? m.kindNameJa : m.kindNameEn)}</strong>
@@ -1073,9 +1120,8 @@ function renderGuildTab(main) {
     <section class="card glass">
       <div class="card-head">
         <h2>${esc(t(loc, 'guild.companionTitle'))}</h2>
-        <span class="pill-badge">${esc(comp[loc] || comp.en)} • ♥${compBond.hearts}/${compBond.maxHearts} (${esc(compBond.label)})</span>
+        <span class="pill-badge">${esc(comp[loc] || comp.en)} • ♥${compBond.hearts}/${compBond.maxHearts}</span>
       </div>
-      <p class="muted">${esc(t(loc, 'guild.companionHint'))} — “${esc(compBond.quote)}”</p>
       <div class="item-grid">
         ${COMPANIONS.map((c) => {
           const owned = (state.ownedCompanions || []).includes(c.id);
@@ -1100,7 +1146,6 @@ function renderGuildTab(main) {
         <h2>${esc(t(loc, 'guild.wardrobeTitle'))}</h2>
         <span class="pill-badge">${esc(t(loc, 'common.points', { n: state.points || 0 }))}</span>
       </div>
-      <p class="muted">${esc(t(loc, 'guild.wardrobeDesc', { pt: state.points || 0 }))}</p>
       <div class="chip-row" style="margin-bottom:12px">
         ${HERO_BASES.map((hb) => `
           <button type="button" class="chip-btn${state.profile?.heroBase === hb.id ? ' active' : ''}" data-hero-base="${esc(hb.id)}">${esc(hb[loc] || hb.en)}</button>
@@ -1143,6 +1188,83 @@ function renderGuildTab(main) {
     equipped: state.equipped,
     reducedMotion: state.settings?.reducedMotion
   }));
+
+  if (duelSceneCleanup) duelSceneCleanup();
+  duelSceneCleanup = startDuelRenderer(document.getElementById('guild-duel-canvas'), () => ({
+    worldSrc: rank.unlockedWorld.src,
+    left: duelLiveState.left,
+    right: duelLiveState.right,
+    leftHp: duelLiveState.leftHp,
+    rightHp: duelLiveState.rightHp,
+    activeTurn: duelLiveState.activeTurn,
+    bannerText: duelLiveState.bannerText,
+    reducedMotion: state.settings?.reducedMotion
+  }));
+
+  main.querySelectorAll('[data-duel-rival]').forEach((b) => {
+    b.addEventListener('click', () => {
+      if (duelTickTimer) { clearInterval(duelTickTimer); duelTickTimer = null; }
+      duelSelectedId = b.dataset.duelRival;
+      duelLiveState = null;
+      renderGuildTab(main);
+    });
+  });
+
+  document.getElementById('duel-copy-code-btn')?.addEventListener('click', async () => {
+    const code = createDuelCode(state);
+    await shareText('Craft Glass Duel Code', code);
+    showToast(t(loc, 'common.copied'));
+  });
+
+  document.getElementById('duel-load-friend-btn')?.addEventListener('click', () => {
+    const raw = document.getElementById('duel-friend-input')?.value.trim() || '';
+    const parsed = parseDuelCode(raw);
+    if (!parsed.valid) {
+      showToast(t(loc, 'duel.invalidCode'));
+      return;
+    }
+    if (duelTickTimer) { clearInterval(duelTickTimer); duelTickTimer = null; }
+    duelCustomCode = raw;
+    duelCustomFighter = parsed.fighter;
+    duelSelectedId = 'friend';
+    duelLiveState = null;
+    soundEngine.play('pass');
+    renderGuildTab(main);
+  });
+
+  document.getElementById('duel-fight-btn')?.addEventListener('click', () => {
+    if (duelTickTimer) { clearInterval(duelTickTimer); duelTickTimer = null; }
+    const sim = simulateAutoDuel(myFighter, activeRival, Date.now());
+    duelLiveState = {
+      left: sim.left,
+      right: sim.right,
+      leftHp: sim.left.maxHp,
+      rightHp: sim.right.maxHp,
+      activeTurn: null,
+      bannerText: '',
+      running: true
+    };
+    soundEngine.play('start');
+    let idx = 0;
+    duelTickTimer = setInterval(() => {
+      if (idx >= sim.turns.length) {
+        clearInterval(duelTickTimer);
+        duelTickTimer = null;
+        const won = sim.winner === 'left';
+        duelLiveState.activeTurn = null;
+        duelLiveState.bannerText = won ? t(loc, 'duel.victory') : t(loc, 'duel.defeat');
+        duelLiveState.running = false;
+        soundEngine.play(won ? 'clear' : 'pause');
+        vibrate(won ? 40 : 18);
+        return;
+      }
+      const turn = sim.turns[idx++];
+      duelLiveState.activeTurn = turn;
+      duelLiveState.leftHp = turn.leftHp;
+      duelLiveState.rightHp = turn.rightHp;
+      soundEngine.play(turn.kind === 'crit' ? 'correct' : 'pass');
+    }, 360);
+  });
 
   main.querySelectorAll('[data-thumb-src]').forEach((c) => renderStaticSpriteThumb(c, c.dataset.thumbSrc, 80));
 
@@ -1323,7 +1445,6 @@ function renderProofTab(main) {
   main.innerHTML = `
     <header class="page-header">
       <h1>${esc(t(loc, 'proof.title'))}</h1>
-      <p>${esc(t(loc, 'proof.subtitle'))}</p>
     </header>
 
     <section class="card glass">
@@ -1331,7 +1452,6 @@ function renderProofTab(main) {
         <h2>🖼️ ${esc(t(loc, 'proof.cardTitle'))}</h2>
         ${pro ? `<span class="pill-badge">${esc(t(loc, 'pro.badgeActive'))}</span>` : ''}
       </div>
-      <p class="muted">${esc(t(loc, 'proof.cardDesc'))}</p>
       <div class="field">
         <label>${esc(t(loc, 'pro.featureProof'))}</label>
         <div class="chip-row">
@@ -1363,7 +1483,6 @@ function renderProofTab(main) {
       <div class="card-head">
         <h2>🤝 ${esc(t(loc, 'proof.pactTitle'))}</h2>
       </div>
-      <p class="muted">${esc(t(loc, 'proof.pactDesc'))}</p>
       <div class="card" style="background:${activeBlessing ? 'var(--gold-soft)' : '#f8fafc'};margin-bottom:14px">
         ${activeBlessing
           ? `<strong>✨ ${esc(t(loc, 'proof.activeBlessing', { title: activeBlessing.title, sender: activeBlessing.senderName, days: activeBlessing.remainingDays }))}</strong>
@@ -1426,7 +1545,9 @@ function renderProofTab(main) {
         <h2>🎬 ${esc(t(loc, 'proof.timelapseTitle'))}</h2>
         <div class="chip-row">
           <span class="pill-badge muted-pill">${esc(t(loc, 'pro.limitTimelapseNote', { count: cachedTimelapses.length, max: limits.maxTimelapses }))}</span>
-          <button type="button" id="weekly-vlog-btn" class="btn btn-gold btn-sm">${pro ? '' : '🔒 '}${esc(t(loc, 'pro.weeklyVlogBtn'))}</button>
+          ${!pro && getRewardPasses(state) > 0 ? `<span class="pill-badge">🎫 ${esc(t(loc, 'pro.passBalance', { count: getRewardPasses(state) }))}</span>` : ''}
+          ${!pro ? `<button type="button" id="watch-ad-pass-btn" class="btn btn-secondary btn-sm">📺 ${esc(t(loc, 'pro.watchAdPassBtn'))}</button>` : ''}
+          <button type="button" id="weekly-vlog-btn" class="btn btn-gold btn-sm">${hasHdAccess(state) ? '' : '🔒 '}${esc(t(loc, 'pro.weeklyVlogBtn'))}</button>
         </div>
       </div>
       ${cachedTimelapses.length === 0 ? `<p class="muted">${esc(t(loc, 'proof.noTimelapses'))}</p>` : `
@@ -1437,7 +1558,7 @@ function renderProofTab(main) {
               <p class="muted">${formatMinutes(loc, tl.seconds)} • ${(tl.frames || []).length} frames</p>
               <div class="chip-row">
                 <button type="button" class="btn btn-primary btn-sm" data-play-tl="${esc(tl.id)}">▶ ${esc(t(loc, 'proof.play'))}</button>
-                <button type="button" class="btn btn-secondary btn-sm" data-export-tl="${esc(tl.id)}">⬇ ${esc(pro ? t(loc, 'pro.hdExportBtn') : t(loc, 'proof.exportWebm'))}</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-export-tl="${esc(tl.id)}">⬇ ${esc(hasHdAccess(state) ? t(loc, 'pro.hdExportBtn') : t(loc, 'proof.exportWebm'))}</button>
                 <button type="button" class="btn btn-danger btn-sm" data-del-tl="${esc(tl.id)}">✕</button>
               </div>
             </div>
@@ -1470,8 +1591,13 @@ function renderProofTab(main) {
     });
   });
 
+  document.getElementById('watch-ad-pass-btn')?.addEventListener('click', () => {
+    const ok = showRewardedAd();
+    if (!ok) showToast(t(loc, 'pro.adWebNotice'));
+  });
+
   document.getElementById('weekly-vlog-btn')?.addEventListener('click', async () => {
-    if (!pro) {
+    if (!pro && getRewardPasses(state) < 1) {
       openCraftProDialog();
       return;
     }
@@ -1479,6 +1605,15 @@ function renderProofTab(main) {
     if (weekSessions.length === 0) {
       showToast(t(loc, 'proof.noTimelapses'));
       return;
+    }
+    if (!pro) {
+      const used = consumeRewardPass(state);
+      if (!used.consumed) {
+        openCraftProDialog();
+        return;
+      }
+      setState(used.state);
+      showToast(t(loc, 'pro.passUsedMsg'));
     }
     const out = await exportWeeklyVlogVideo(weekSessions, wk);
     await saveBlobFile(out.filename, out.blob);
@@ -1591,7 +1726,16 @@ function renderProofTab(main) {
     b.addEventListener('click', async () => {
       const tl = await getTimelapseSession(b.dataset.exportTl);
       if (!tl?.frames?.length) return;
-      const out = await exportTimelapseVideo(tl, { hd: limits.hdExport });
+      let useHd = limits.hdExport;
+      if (!useHd && getRewardPasses(state) > 0) {
+        const used = consumeRewardPass(state);
+        if (used.consumed) {
+          useHd = true;
+          setState(used.state);
+          showToast(t(loc, 'pro.passUsedMsg'));
+        }
+      }
+      const out = await exportTimelapseVideo(tl, { hd: useHd });
       await saveBlobFile(out.filename, out.blob);
     });
   });
@@ -1665,7 +1809,6 @@ function renderInsightsTab(main) {
   main.innerHTML = `
     <header class="page-header">
       <h1>${esc(t(loc, 'insights.title'))}</h1>
-      <p>${esc(t(loc, 'insights.backupDesc'))}</p>
     </header>
 
     <div class="grid-2">
@@ -1766,7 +1909,6 @@ function renderInsightsTab(main) {
           <h2>${esc(t(loc, 'insights.correctBtn'))}</h2>
           <button type="button" class="icon-btn" id="cor-close">✕</button>
         </div>
-        <p class="muted">${esc(t(loc, 'focus.summaryCorrectionHint'))}</p>
         <div class="field">
           <label for="cor-min">${esc(t(loc, 'focus.trueDurationMin'))}</label>
           <input id="cor-min" type="number" min="1" max="720" value="${curMin}">
@@ -1821,19 +1963,18 @@ function renderInsightsTab(main) {
 function openCraftProDialog(noticeMsg = '') {
   const loc = locale();
   const pro = isProActive(state);
+  const passes = getRewardPasses(state);
   if (isNativeAndroid()) queryBillingProducts();
 
   openDialog(`
     <div class="card-head">
       <h2>✨ ${esc(t(loc, 'pro.title'))}</h2>
-      <button type="button" class="icon-btn" id="pro-dlg-close">✕</button>
+      <div class="chip-row">
+        <span class="pill-badge">🛡️ ${esc(t(loc, 'pro.pledgeTitle'))}</span>
+        <button type="button" class="icon-btn" id="pro-dlg-close">✕</button>
+      </div>
     </div>
     ${noticeMsg ? `<p class="pill-badge" style="margin-bottom:10px">${esc(noticeMsg)}</p>` : ''}
-    <p class="muted">${esc(t(loc, 'pro.subtitle'))}</p>
-    <div class="card" style="background:#f0fdf4;margin:10px 0">
-      <strong>🛡️ ${esc(t(loc, 'pro.pledgeTitle'))}</strong>
-      <p class="muted" style="margin:4px 0 0">${esc(t(loc, 'pro.pledgeBody'))}</p>
-    </div>
     <table class="pro-table">
       <thead>
         <tr>
@@ -1843,6 +1984,11 @@ function openCraftProDialog(noticeMsg = '') {
         </tr>
       </thead>
       <tbody>
+        <tr>
+          <td><strong>${esc(t(loc, 'pro.featureAds'))}</strong></td>
+          <td>${esc(t(loc, 'pro.featureAdsFree'))}</td>
+          <td><strong>${esc(t(loc, 'pro.featureAdsPro'))}</strong></td>
+        </tr>
         <tr>
           <td><strong>${esc(t(loc, 'pro.featureTimelapse'))}</strong></td>
           <td>${esc(t(loc, 'pro.featureTimelapseFree'))}</td>
@@ -1884,9 +2030,12 @@ function openCraftProDialog(noticeMsg = '') {
           `;
         }).join('')}
       </div>
-      <div class="chip-row" style="margin-top:12px;justify-content:space-between;align-items:center">
+      <div class="card" style="background:#f8fafc;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="pill-badge">🎫 ${esc(t(loc, 'pro.passBalance', { count: passes }))}</span>
+        <button type="button" id="pro-watch-ad-btn" class="btn btn-gold btn-sm">📺 ${esc(t(loc, 'pro.watchAdPassBtn'))}</button>
+      </div>
+      <div class="chip-row" style="margin-top:10px;justify-content:space-between;align-items:center">
         <button type="button" id="pro-restore-btn" class="btn btn-secondary btn-sm">${esc(t(loc, 'pro.restoreBtn'))}</button>
-        ${!isNativeAndroid() ? `<small class="muted">${esc(t(loc, 'pro.webNotice'))}</small>` : ''}
       </div>
     `}
   `);
@@ -1897,6 +2046,10 @@ function openCraftProDialog(noticeMsg = '') {
       const ok = purchaseProProduct(btn.dataset.buyPro, btn.dataset.buyType);
       if (!ok) showToast(t(loc, 'pro.webNotice'));
     });
+  });
+  document.getElementById('pro-watch-ad-btn')?.addEventListener('click', () => {
+    const ok = showRewardedAd();
+    if (!ok) showToast(t(loc, 'pro.adWebNotice'));
   });
   document.getElementById('pro-restore-btn')?.addEventListener('click', () => {
     const ok = restoreProPurchases();
@@ -1929,7 +2082,6 @@ function openOnboardingDialog() {
     <div class="card-head">
       <h2>✨ ${esc(t(loc, 'onboarding.welcomeTitle'))}</h2>
     </div>
-    <p class="muted">${esc(t(loc, 'onboarding.welcomeBody'))}</p>
     <div class="field">
       <label>${esc(t(loc, 'onboarding.chooseLang'))}</label>
       <div class="chip-row">
@@ -1943,12 +2095,10 @@ function openOnboardingDialog() {
         ${Object.keys(STARTER_PACKS).map((key) => `
           <button type="button" class="shop-item${chosenPack === key ? ' active' : ''}" data-onb-pack="${key}" style="cursor:pointer;border:2px solid ${chosenPack === key ? 'var(--emerald)' : '#e2e8f0'}">
             <strong>${esc(t(loc, `onboarding.starterTemplates.${key}.name`))}</strong>
-            <small class="muted">${esc(t(loc, `onboarding.starterTemplates.${key}.desc`))}</small>
           </button>
         `).join('')}
         <button type="button" class="shop-item" data-onb-pack="blank" style="cursor:pointer;border:2px solid #e2e8f0">
           <strong>${esc(t(loc, 'onboarding.blankStart'))}</strong>
-          <small class="muted">${esc(t(loc, 'onboarding.blankDesc'))}</small>
         </button>
       </div>
     </div>
@@ -1992,6 +2142,8 @@ function renderAll() {
   renderChrome();
   const main = document.getElementById('app-main');
   if (sceneCleanup) { sceneCleanup(); sceneCleanup = null; }
+  if (duelSceneCleanup) { duelSceneCleanup(); duelSceneCleanup = null; }
+  if (duelTickTimer) { clearInterval(duelTickTimer); duelTickTimer = null; }
 
   if (activeTab === 'pool') renderPoolTab(main);
   else if (activeTab === 'focus') renderFocusTab(main);
@@ -2052,6 +2204,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
   if (isNativeAndroid()) queryBillingProducts();
+
+  onAdEvent((ev) => {
+    if (!ev || typeof ev !== 'object') return;
+    if (ev.type === 'rewarded') {
+      setState((prev) => grantRewardPass(prev, ev.amount || 1));
+      soundEngine.play('clear');
+      vibrate(30);
+      showToast(t(locale(), 'pro.passGrantedMsg'));
+    } else if (ev.type === 'rewarded_unavailable') {
+      showToast(t(locale(), 'pro.adNotReadyMsg'));
+    }
+  });
 
   cachedTimelapses = await listTimelapseSessions();
   renderAll();

@@ -143,7 +143,7 @@ foreach ($text in $pills) {
   $px += $pw + 12
 }
 
-$fg.DrawString('Zero AI Hype  •  Zero Ads  •  Zero Pay-to-Win', $pillFont, $goldBrush, 60, 385)
+$fg.DrawString('Zero AI Hype  •  Free or Pro  •  Zero Pay-to-Win', $pillFont, $goldBrush, 60, 385)
 
 $titleFont.Dispose(); $subFont.Dispose(); $bodyFont.Dispose(); $pillFont.Dispose()
 $whiteBrush.Dispose(); $mintBrush.Dispose(); $goldBrush.Dispose()

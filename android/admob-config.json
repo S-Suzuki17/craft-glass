@@ -1,0 +1,7 @@
+{
+  "mode": "test",
+  "note": "Official Google AdMob Android Test IDs for Internal Testing. Replace with production IDs in AndroidManifest.xml and AdManager.java before Production release.",
+  "appId": "ca-app-pub-3940256099942544~3347511713",
+  "bannerUnitId": "ca-app-pub-3940256099942544/9214589741",
+  "rewardedUnitId": "ca-app-pub-3940256099942544/5224354917"
+}

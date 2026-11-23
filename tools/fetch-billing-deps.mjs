@@ -101,11 +101,13 @@ async function resolveTree(group, artifact, version) {
 }
 
 await resolveTree('com.android.billingclient', 'billing', '8.3.0');
+await resolveTree('com.google.android.gms', 'play-services-ads-lite', '25.3.0');
 // Ensure Guava ListenableFuture (used by BillingClient futures / concurrent) is present if referenced
 await resolveTree('com.google.guava', 'listenablefuture', '1.0');
 
 fs.rmSync(JARS_DIR, { recursive: true, force: true });
 fs.rmSync(RES_DIR, { recursive: true, force: true });
+fs.rmSync(path.join(LIBS_DIR, 'tmp_extract'), { recursive: true, force: true });
 fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
 fs.mkdirSync(JARS_DIR, { recursive: true });
 fs.mkdirSync(RES_DIR, { recursive: true });
@@ -114,12 +116,13 @@ const packages = [];
 const resDirs = [];
 const jars = [];
 const expectedArtifacts = new Set();
+const aarExtracts = [];
 
 for (const item of resolved.values()) {
+  if (item.packaging === 'pom') continue;
   const ext = item.packaging === 'aar' ? 'aar' : 'jar';
   const slug = `${item.group}__${item.artifact}`.replace(/[^a-zA-Z0-9._-]/g, '_');
   const fileName = `${slug}-${item.version}.${ext}`;
-  expectedArtifacts.add(fileName);
   const filePath = path.join(ARTIFACTS_DIR, fileName);
 
   if (!fs.existsSync(filePath)) {
@@ -130,9 +133,13 @@ for (const item of resolved.values()) {
         if (buf) break;
       }
     }
-    if (!buf) throw new Error(`Failed downloading ${item.group}:${item.artifact}:${item.version}.${ext}`);
+    if (!buf) {
+      console.warn(`Skipping artifact without binary (${item.packaging}): ${item.group}:${item.artifact}:${item.version}`);
+      continue;
+    }
     fs.writeFileSync(filePath, buf);
   }
+  expectedArtifacts.add(fileName);
 
   if (ext === 'jar') {
     const outJar = path.join(JARS_DIR, `${slug}.jar`);
@@ -140,14 +147,23 @@ for (const item of resolved.values()) {
     jars.push(outJar);
   } else {
     const tmpDir = path.join(LIBS_DIR, 'tmp_extract', slug);
-    fs.rmSync(tmpDir, { recursive: true, force: true });
     fs.mkdirSync(tmpDir, { recursive: true });
-    const ps = `
-      Add-Type -AssemblyName System.IO.Compression.FileSystem
-      [System.IO.Compression.ZipFile]::ExtractToDirectory('${filePath.replace(/'/g, "''")}', '${tmpDir.replace(/'/g, "''")}')
-    `;
-    execFileSync('powershell', ['-NoProfile', '-Command', ps]);
+    aarExtracts.push({ slug, filePath, tmpDir });
+  }
+}
 
+if (aarExtracts.length > 0) {
+  const psLines = [
+    '$ErrorActionPreference = "Stop"',
+    'Add-Type -AssemblyName System.IO.Compression.FileSystem',
+    ...aarExtracts.map(({ filePath, tmpDir }) =>
+      `[System.IO.Compression.ZipFile]::ExtractToDirectory('${filePath.replace(/'/g, "''")}', '${tmpDir.replace(/'/g, "''")}')`
+    )
+  ];
+  execFileSync('powershell', ['-NoProfile', '-Command', psLines.join('\n')]);
+}
+
+for (const { slug, tmpDir } of aarExtracts) {
     const mfPath = path.join(tmpDir, 'AndroidManifest.xml');
     if (fs.existsSync(mfPath)) {
       const mf = fs.readFileSync(mfPath, 'utf8');
@@ -186,7 +202,6 @@ for (const item of resolved.values()) {
       }
     }
     fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
 }
 
 fs.rmSync(path.join(LIBS_DIR, 'tmp_extract'), { recursive: true, force: true });

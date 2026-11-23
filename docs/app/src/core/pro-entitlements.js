@@ -5,7 +5,7 @@
 export const PRO_SKUS = Object.freeze([
   { id: 'craft_pro_yearly', type: 'subs', fallbackEn: '$19.99 / year', fallbackJa: '¥2,900 / 年', bestValue: true },
   { id: 'craft_pro_monthly', type: 'subs', fallbackEn: '$2.99 / month', fallbackJa: '¥480 / 月', bestValue: false },
-  { id: 'craft_pro_lifetime', type: 'inapp', fallbackEn: '$39.99 once', fallbackJa: '¥5,800 買い切り', bestValue: false }
+  { id: 'craft_pro_lifetime', type: 'inapp', fallbackEn: '$59.99 once', fallbackJa: '¥8,800 買い切り', bestValue: false }
 ]);
 
 export const PROOF_CARD_THEMES = Object.freeze([
@@ -77,6 +77,46 @@ export function isProActive(state) {
   return Boolean(state?.entitlement?.isPro);
 }
 
+export function getRewardPasses(state) {
+  return Math.max(0, Math.floor(Number(state?.entitlement?.rewardPasses || 0)));
+}
+
+export function hasHdAccess(state) {
+  return isProActive(state) || getRewardPasses(state) > 0;
+}
+
+/**
+ * Grants temporary HD export / Weekly Vlog passes earned by watching optional rewarded video ads.
+ * Strictly Anti-Pay-to-Win: NEVER touches points, sessions, guild EXP, or human blessings.
+ */
+export function grantRewardPass(state, count = 1) {
+  const delta = Math.max(0, Math.floor(Number(count) || 0));
+  return {
+    ...state,
+    entitlement: {
+      ...(state?.entitlement || { isPro: false, activeSku: null, verifiedAt: null }),
+      rewardPasses: getRewardPasses(state) + delta
+    }
+  };
+}
+
+export function consumeRewardPass(state) {
+  const current = getRewardPasses(state);
+  if (current < 1) {
+    return { state, consumed: false };
+  }
+  return {
+    consumed: true,
+    state: {
+      ...state,
+      entitlement: {
+        ...(state?.entitlement || { isPro: false, activeSku: null, verifiedAt: null }),
+        rewardPasses: current - 1
+      }
+    }
+  };
+}
+
 export function getPlanLimits(state) {
   return isProActive(state) ? PRO_LIMITS : FREE_LIMITS;
 }
@@ -113,7 +153,8 @@ export function applyBillingEntitlement(state, billingPayload = {}, nowMs = Date
     entitlement: {
       isPro,
       activeSku,
-      verifiedAt: nowMs
+      verifiedAt: nowMs,
+      rewardPasses: getRewardPasses(state)
     }
   };
 }

@@ -1,9 +1,9 @@
 # Craft Glass — Google Play Console Submission Metadata
 
 - **Package Name**: `com.craftglass.app`
-- **Version**: `1.0.0` (`versionCode: 1`)
+- **Version**: `1.0.2` (`versionCode: 3`)
 - **Default Language**: English (United States) — `en-US`
-- **App Type**: App (Free with optional Craft Pro In-App Purchases, No Ads)
+- **App Type**: App (Free with gentle non-focus AdMob ads & optional Craft Pro In-App Purchases)
 - **Category**: Productivity (or Education)
 - **Privacy Policy URL**: `https://s-suzuki17.github.io/craft-glass/privacy.html`
 
@@ -39,7 +39,8 @@ Craft Glass has zero AI cheerleaders. Export a signed **Proof Pact Code (`CGP1:.
 - **Break Gems** discovered on 5+ minute sessions — claimable only during your 5-minute Break
 - **Sealed Monsters & FSRS Memory Forge**: Overdue spaced-repetition flashcards and neglected habits appear as monsters you can re-seal through real review
 - **Honest Time Correction**: Adjust forgotten timers anytime; EXP, bonds, chests, gems, and gear reconcile automatically and honestly
-- **100% Local-First & Private**: Works completely offline with no accounts, no ads, no subscriptions, and full JSON backup export/import.
+- **Guild Duel Arena (Auto-Battler)**: Exchange signed `CGD1:...` Duel Codes with friends or battle Guild Rivals in automated pixel-art duels powered strictly by your real focus level, gear, and companion bond
+- **100% Local-First Study Data & Anti-Pay-to-Win**: Works offline with no accounts and full JSON backup export/import. Free tier includes gentle non-focus banner ads and optional rewarded HD passes; upgrade to Craft Pro for 100% ad-free, 60-session HD archives, unlimited FSRS cards, and all 12 rooms.
 
 ---
 
@@ -61,19 +62,26 @@ AIで誰でも一瞬でアプリや連続達成画面を作れる時代だから
 • **ぼかし対応タイムラプス＆努力台帳**：任意の手元カメラ録画では保存前にリアルタイムでぼかし保護を焼き込み、端末内のSHA-256台帳・1080px週間Proof Card PNG・WebM動画として出力できます。
 • **生身の祝福 Pact（AI定型褒めゼロ）**：AIのお世辞は一切なし。自分のProof Pactコードをリアルな友人・家族・メンターに送り、スタンプ付き祝福コードを返してもらうとアバターに7日間のオーラが灯ります。
 • **400時間・25段階ギルドRPG＆FSRS記憶定着**：1分=1EXPでLv.99・20ワールドへ進む冒険、5分以上の集中後の「休憩で見つけた宝石」、間隔反復FSRSカードと連携した「封印された魔物」、そして後から正直に直せる「時間修正＆自動精算」を搭載。
-• **完全ローカル完結・広告なし・Pay-to-Winなし**：アカウント登録不要、オフライン動作、JSONで完全バックアップ可能。
+• **ギルド自動対戦（Auto-Battler）＆400時間・25段階ギルドRPG**：実努力で育てたヒーロー＋相棒同士を `CGD1:...` 対戦コードで自動バトルさせたり、FSRS暗記カードや休憩宝石で育成できます。
+• **完全ローカル完結・Pay-to-Winなし**：アカウント登録不要、JSONで完全バックアップ可能。無料枠は控えめな非集中時バナー＆任意リワード広告付き、Craft Proで広告完全非表示＆HD長期保管を解放できます。
 
 ---
 
 ## App Content Declarations Checklist
 - **Privacy Policy**: `https://s-suzuki17.github.io/craft-glass/privacy.html`
 - **App Access**: All functionality is available without special access / login.
-- **Ads**: No, my app does not contain ads.
+- **Ads**: **Yes, my app contains ads** (Google AdMob banner on non-focus screens & optional rewarded video ads on Free tier; 100% disabled on Craft Pro).
+- **Advertising ID**: **Yes** — Used for `Advertising or marketing`, `Analytics`, and `Fraud prevention, security, and compliance`.
 - **Data Safety**:
-  - Does your app collect or share any of the required user data types? **No**
-  - Is all of the user data collected by your app encrypted in transit? (N/A — no user data is collected/transmitted off-device)
+  - Does your app collect or share any of the required user data types? **Yes** (via Google Mobile Ads SDK on Free tier):
+    - **Device or other IDs** (Advertising ID): Collected & Shared (Advertising/Marketing, Analytics, Fraud prevention)
+    - **Location -> Approximate location** (IP-based by AdMob): Collected & Shared (Advertising/Marketing, Analytics, Fraud prevention)
+    - **App activity -> App interactions / Other actions**: Collected & Shared (Advertising/Marketing, Analytics, Fraud prevention)
+    - **App info and performance -> Crash logs & Diagnostics**: Collected & Shared (Analytics, Fraud prevention)
+  - Is all of the user data collected by your app encrypted in transit? **Yes**
+  - Do you provide a way for users to request that their data be deleted? **N/A / Ephemeral device-ID telemetry** (no developer account/server exists; users can reset/delete their Android Advertising ID in OS Settings or upgrade to Craft Pro to disable ad SDK requests).
 - **Content Rating (IARC)**: Productivity / Habit Tracker, mild stylized pixel-art fantasy companions/monsters, no realistic violence, no gambling, no user-generated public chat/servers, no location sharing -> **Everyone / 3+**.
-- **Target Audience**: 13–15, 16–17, and 18+ (or 16+ / 18+ to ensure non-children-directed streamlined review while global teens & adults can install).
+- **Target Audience**: 16–17 and 18+.
 - **News / COVID-19 / Government / Financial / Health**: All **No** (general productivity, study & habit tool).
 
 ---
@@ -83,7 +91,7 @@ AIで誰でも一瞬でアプリや連続達成画面を作れる時代だから
   - `craft_pro_yearly` — Suggested price: `$19.99 / year` (`¥2,900 / 年`)
   - `craft_pro_monthly` — Suggested price: `$2.99 / month` (`¥480 / 月`)
 - **In-app product (`アプリ内アイテム` / 買い切り)**:
-  - `craft_pro_lifetime` — Suggested price: `$39.99` (`¥5,800`)
+  - `craft_pro_lifetime` — Suggested price: `$59.99` (`¥8,800`)
 
 ---
 

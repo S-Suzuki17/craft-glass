@@ -178,3 +178,170 @@ export async function renderStaticSpriteThumb(canvas, src, size = 80) {
     ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, 0, 0, canvas.width, canvas.height);
   }
 }
+
+/**
+ * Live 2-Hero + Companion Face-Off Auto-Battle Canvas Renderer.
+ */
+export function startDuelRenderer(canvas, getDuelState) {
+  if (!canvas) return () => {};
+  const ctx = canvas.getContext('2d');
+  let rafId = null;
+  let stopped = false;
+
+  const drawUnit = (img, col, row, x, y, size, flipX = false) => {
+    if (!img || !img.naturalWidth) return;
+    const isGrid = img.naturalWidth > 80 && img.naturalHeight > 80;
+    const sx = isGrid ? col * 80 : 0;
+    const sy = isGrid ? row * 80 : 0;
+    ctx.save();
+    if (flipX) {
+      ctx.translate(x + size, y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, sx, sy, 80, 80, 0, 0, size, size);
+    } else {
+      ctx.drawImage(img, sx, sy, 80, 80, x, y, size, size);
+    }
+    ctx.restore();
+  };
+
+  const drawHpBar = (x, y, bw, bh, cur, max, color, alignRight = false, label = '') => {
+    const ratio = Math.max(0, Math.min(1, cur / Math.max(1, max)));
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
+    ctx.beginPath();
+    ctx.roundRect(x, y, bw, bh, 6);
+    ctx.fill();
+
+    const fw = Math.round((bw - 4) * ratio);
+    if (fw > 0) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      const fx = alignRight ? x + bw - 2 - fw : x + 2;
+      ctx.roundRect(fx, y + 2, fw, bh - 4, 4);
+      ctx.fill();
+    }
+
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = alignRight ? 'right' : 'left';
+    ctx.fillText(label, alignRight ? x + bw - 4 : x + 4, y - 4);
+    ctx.fillText(`${cur}/${max}`, alignRight ? x + bw - 6 : x + 6, y + bh - 3);
+  };
+
+  const drawFrame = async (nowMs) => {
+    if (stopped) return;
+    const st = typeof getDuelState === 'function' ? getDuelState() : getDuelState || {};
+    const {
+      worldSrc = './assets/worlds/world-01.png',
+      left,
+      right,
+      leftHp = left?.maxHp || 100,
+      rightHp = right?.maxHp || 100,
+      activeTurn = null,
+      bannerText = '',
+      reducedMotion = false
+    } = st;
+
+    if (!left || !right) return;
+    const lMove = activeTurn?.actor === 'left';
+    const rMove = activeTurn?.actor === 'right';
+
+    const [bgImg, lHero, lComp, rHero, rComp] = await Promise.all([
+      loadImage(worldSrc),
+      loadImage(`./assets/heroes/${left.heroBase || 'boy-b'}-${lMove ? 'move' : 'idle'}.png`),
+      loadImage(`./assets/creatures/${left.companionId || 'twigfox'}-${lMove ? 'move' : 'idle'}.png`),
+      loadImage(`./assets/heroes/${right.heroBase || 'girl-b'}-${rMove ? 'move' : 'idle'}.png`),
+      loadImage(`./assets/creatures/${right.companionId || 'twigfox'}-${rMove ? 'move' : 'idle'}.png`)
+    ]);
+    if (stopped) return;
+
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.imageSmoothingEnabled = false;
+
+    if (bgImg && bgImg.naturalWidth > 0) {
+      const scale = Math.max(w / bgImg.naturalWidth, h / bgImg.naturalHeight);
+      const dw = bgImg.naturalWidth * scale;
+      const dh = bgImg.naturalHeight * scale;
+      ctx.drawImage(bgImg, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    } else {
+      ctx.fillStyle = '#064e3b';
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    ctx.fillStyle = 'rgba(6, 28, 22, 0.35)';
+    ctx.fillRect(0, 0, w, h);
+
+    const frameIdx = reducedMotion ? 0 : Math.floor(nowMs / 110) % 16;
+    const col = frameIdx % 4;
+    const row = Math.floor(frameIdx / 4);
+
+    const heroSize = Math.min(Math.round(h * 0.54), 96);
+    const compSize = Math.round(heroSize * 0.72);
+    const groundY = Math.round(h - heroSize - 12);
+    const compY = Math.round(h - compSize - 12);
+
+    const lLunge = lMove ? 26 : rMove ? -6 : 0;
+    const rLunge = rMove ? -26 : lMove ? 6 : 0;
+
+    const lx = Math.round(w * 0.14) + lLunge;
+    const rx = Math.round(w - w * 0.14 - heroSize) + rLunge;
+
+    // Draw Left companion & hero
+    drawUnit(lComp, col, row, lx - Math.round(compSize * 0.55), compY, compSize, false);
+    drawUnit(lHero, col, row, lx, groundY, heroSize, false);
+
+    // Draw Right companion & hero (flipped horizontally to face Left!)
+    drawUnit(rComp, col, row, rx + Math.round(heroSize * 0.82), compY, compSize, true);
+    drawUnit(rHero, col, row, rx, groundY, heroSize, true);
+
+    // HP Bars at top
+    const barW = Math.min(180, Math.round(w * 0.38));
+    drawHpBar(14, 22, barW, 15, leftHp, left.maxHp, '#10b981', false, `Lv.${left.level} ${left.name}`);
+    drawHpBar(w - 14 - barW, 22, barW, 15, rightHp, right.maxHp, '#f59e0b', true, `Lv.${right.level} ${right.name}`);
+
+    // VS badge center
+    ctx.font = '900 13px system-ui, sans-serif';
+    ctx.fillStyle = '#fde68a';
+    ctx.textAlign = 'center';
+    ctx.fillText('VS', w / 2, 33);
+
+    // Floating hit effect
+    if (activeTurn) {
+      const targetX = activeTurn.actor === 'left' ? rx + heroSize / 2 : lx + heroSize / 2;
+      const targetY = groundY + 14;
+      ctx.font = '900 16px system-ui, sans-serif';
+      ctx.fillStyle = activeTurn.kind === 'crit' ? '#fde047' : '#ffffff';
+      const prefix = activeTurn.kind === 'crit' ? 'CRIT ' : activeTurn.kind === 'companion' ? 'PET ' : '';
+      ctx.fillText(`${prefix}-${activeTurn.dmg}`, targetX, targetY);
+    }
+
+    if (bannerText) {
+      ctx.fillStyle = 'rgba(6, 78, 59, 0.88)';
+      const bw = 156;
+      const bh = 32;
+      ctx.beginPath();
+      ctx.roundRect((w - bw) / 2, h / 2 - bh / 2, bw, bh, 16);
+      ctx.fill();
+      ctx.font = '900 15px system-ui, sans-serif';
+      ctx.fillStyle = '#fde68a';
+      ctx.textAlign = 'center';
+      ctx.fillText(bannerText, w / 2, h / 2 + 5);
+    }
+
+    if (!reducedMotion && !stopped) {
+      rafId = requestAnimationFrame(drawFrame);
+    }
+  };
+
+  if (getDuelState()?.reducedMotion) {
+    drawFrame(0);
+  } else {
+    rafId = requestAnimationFrame(drawFrame);
+  }
+
+  return () => {
+    stopped = true;
+    if (rafId != null) cancelAnimationFrame(rafId);
+  };
+}

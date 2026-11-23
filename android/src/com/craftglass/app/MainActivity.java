@@ -19,6 +19,7 @@ import android.os.Vibrator;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowManager;
@@ -31,6 +32,10 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+
+import org.json.JSONObject;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -47,9 +52,13 @@ public final class MainActivity extends Activity {
     private static final int REQ_FILE_CHOOSER = 1002;
 
     private WebView webView;
+    private FrameLayout adContainer;
     private BillingManager billingManager;
+    private AdManager adManager;
     private PermissionRequest pendingPermissionRequest;
     private ValueCallback<Uri[]> filePathCallback;
+    private int lastTopPx = 0;
+    private int lastBottomPx = 0;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -65,9 +74,27 @@ public final class MainActivity extends Activity {
             window.setNavigationBarColor(Color.TRANSPARENT);
         }
 
+        LinearLayout rootLayout = new LinearLayout(this);
+        rootLayout.setOrientation(LinearLayout.VERTICAL);
+        rootLayout.setBackgroundColor(Color.parseColor("#F4F9F6"));
+
         webView = new WebView(this);
         webView.setBackgroundColor(Color.parseColor("#F4F9F6"));
-        setContentView(webView);
+        rootLayout.addView(webView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+        ));
+
+        adContainer = new FrameLayout(this);
+        adContainer.setBackgroundColor(Color.parseColor("#F4F9F6"));
+        adContainer.setVisibility(View.GONE);
+        rootLayout.addView(adContainer, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+
+        setContentView(rootLayout);
 
         if (Build.VERSION.SDK_INT >= 30) {
             android.view.WindowInsetsController insetsController = window.getInsetsController();
@@ -90,23 +117,16 @@ public final class MainActivity extends Activity {
             );
         }
 
-        webView.setOnApplyWindowInsetsListener((v, insets) -> {
-            int topPx = 0;
-            int bottomPx = 0;
+        rootLayout.setOnApplyWindowInsetsListener((v, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets sys = insets.getInsets(WindowInsets.Type.systemBars());
-                topPx = sys.top;
-                bottomPx = sys.bottom;
+                lastTopPx = sys.top;
+                lastBottomPx = sys.bottom;
             } else {
-                topPx = insets.getSystemWindowInsetTop();
-                bottomPx = insets.getSystemWindowInsetBottom();
+                lastTopPx = insets.getSystemWindowInsetTop();
+                lastBottomPx = insets.getSystemWindowInsetBottom();
             }
-            float density = getResources().getDisplayMetrics().density;
-            int topDp = Math.round(topPx / Math.max(1f, density));
-            int bottomDp = Math.round(bottomPx / Math.max(1f, density));
-            String js = "document.documentElement.style.setProperty('--safe-top','" + topDp + "px');"
-                    + "document.documentElement.style.setProperty('--safe-bottom','" + bottomDp + "px');";
-            webView.post(() -> webView.evaluateJavascript(js, null));
+            applySafeAreaInsets();
             return insets;
         });
 
@@ -120,10 +140,33 @@ public final class MainActivity extends Activity {
         settings.setSupportZoom(false);
 
         webView.addJavascriptInterface(new NativeBridge(), "CraftGlassNative");
+        adManager = new AdManager(this, adContainer, new AdManager.Listener() {
+            @Override
+            public void onAdEvent(String jsonPayload) {
+                if (webView != null) {
+                    String js = "typeof window.__onCraftGlassAdEvent==='function'&&window.__onCraftGlassAdEvent("
+                            + JSONObject.quote(jsonPayload) + ");";
+                    webView.post(() -> webView.evaluateJavascript(js, null));
+                }
+            }
+
+            @Override
+            public void onBannerVisibilityChanged(boolean visible) {
+                applySafeAreaInsets();
+            }
+        });
+
         billingManager = new BillingManager(this, jsonPayload -> {
+            try {
+                JSONObject obj = new JSONObject(jsonPayload);
+                if (obj.has("isPro") && adManager != null) {
+                    adManager.setProActive(obj.optBoolean("isPro", false));
+                }
+            } catch (Exception ignored) {
+            }
             if (webView != null) {
                 String js = "typeof window.__onCraftGlassBillingUpdate==='function'&&window.__onCraftGlassBillingUpdate("
-                        + org.json.JSONObject.quote(jsonPayload) + ");";
+                        + JSONObject.quote(jsonPayload) + ");";
                 webView.post(() -> webView.evaluateJavascript(js, null));
             }
         });
@@ -257,8 +300,38 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private void applySafeAreaInsets() {
+        if (webView == null) return;
+        boolean adVisible = adContainer != null && adContainer.getVisibility() == View.VISIBLE;
+        if (adContainer != null) {
+            adContainer.setPadding(0, 0, 0, adVisible ? lastBottomPx : 0);
+        }
+        float density = getResources().getDisplayMetrics().density;
+        int topDp = Math.round(lastTopPx / Math.max(1f, density));
+        int bottomDp = adVisible ? 0 : Math.round(lastBottomPx / Math.max(1f, density));
+        String js = "document.documentElement.style.setProperty('--safe-top','" + topDp + "px');"
+                + "document.documentElement.style.setProperty('--safe-bottom','" + bottomDp + "px');";
+        webView.post(() -> webView.evaluateJavascript(js, null));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (adManager != null) adManager.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        if (adManager != null) adManager.onPause();
+        super.onPause();
+    }
+
     @Override
     protected void onDestroy() {
+        if (adManager != null) {
+            adManager.onDestroy();
+            adManager = null;
+        }
         if (billingManager != null) {
             billingManager.destroy();
             billingManager = null;
@@ -412,6 +485,20 @@ public final class MainActivity extends Activity {
         public void restorePurchases() {
             if (billingManager != null) {
                 billingManager.restorePurchases();
+            }
+        }
+
+        @JavascriptInterface
+        public void setAdBannerSuppressed(final boolean suppressed) {
+            if (adManager != null) {
+                adManager.setFocusSuppressed(suppressed);
+            }
+        }
+
+        @JavascriptInterface
+        public void showRewardedAd() {
+            if (adManager != null) {
+                adManager.showRewardedAd();
             }
         }
 

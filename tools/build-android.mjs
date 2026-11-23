@@ -25,8 +25,8 @@ const AAPT2 = path.join(BUILD_TOOLS, 'aapt2.exe');
 const D8_JAR = path.join(BUILD_TOOLS, 'lib/d8.jar');
 const BUNDLETOOL_JAR = path.join(TOOLS_DIR, 'bundletool.jar');
 
-const AAB_OUT = path.join(DIST_DIR, 'craft-glass-1.0.1-vc2-release.aab');
-const OLD_AAB = path.join(DIST_DIR, 'craft-glass-1.0.0-vc1-release.aab');
+const AAB_OUT = path.join(DIST_DIR, 'craft-glass-1.0.2-vc3-release.aab');
+const OLD_AAB = path.join(DIST_DIR, 'craft-glass-1.0.1-vc2-release.aab');
 const APKS_OUT = path.join(BUILD_DIR, 'universal.apks');
 const APK_OUT = path.join(BUILD_DIR, 'universal.apk');
 
@@ -231,7 +231,7 @@ run('powershell', ['-NoProfile', '-Command', extractApkPs]);
 
 const badging = execFileSync(AAPT2, ['dump', 'badging', APK_OUT], { encoding: 'utf8' });
 const pkgLine = badging.split(/\r?\n/).find((l) => l.startsWith('package:'));
-const sdkLines = badging.split(/\r?\n/).filter((l) => l.includes('SdkVersion:') || l.startsWith('sdkVersion:') || l.includes('com.android.vending.BILLING'));
+const sdkLines = badging.split(/\r?\n/).filter((l) => l.includes('SdkVersion:') || l.startsWith('sdkVersion:') || l.includes('com.android.vending.BILLING') || l.includes('com.google.android.gms.permission.AD_ID'));
 console.log('--- BADGING SUMMARY ---');
 console.log(pkgLine);
 sdkLines.forEach((l) => console.log(l));

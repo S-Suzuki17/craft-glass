@@ -5,7 +5,7 @@ export const SUPPORTED_LOCALES = Object.freeze(['en', 'ja']);
 const DICT = {
   en: {
     appName: 'Craft Glass',
-    tagline: 'Proof of real human effort',
+    tagline: 'Weekly Habit RPG',
     tabs: {
       pool: 'Pool',
       focus: 'Focus',
@@ -361,11 +361,14 @@ const DICT = {
       title: 'Craft Pro',
       badge: '✨ Pro',
       badgeActive: '★ Pro',
-      subtitle: 'Expand your archive, HD timelapse exports, and gallery themes — zero ads, zero Pay-to-Win.',
+      subtitle: 'Go 100% ad-free, expand timelapse archives, HD exports, and themes — zero Pay-to-Win.',
       pledgeTitle: 'Anti-Pay-to-Win Guarantee',
       pledgeBody: 'Craft Pro NEVER sells EXP, Craft Points, Guild Ranks, or Human Blessings. Effort always stays honest.',
       freeCol: 'Free',
       proCol: 'Craft Pro',
+      featureAds: 'Ads',
+      featureAdsFree: 'Gentle bottom banner (hidden during focus)',
+      featureAdsPro: '100% Ad-Free',
       featureTimelapse: 'Local Timelapse Vault',
       featureTimelapseFree: 'Up to 3 sessions (360p)',
       featureTimelapsePro: 'Up to 60 sessions + 720p HD & Weekly Vlog',
@@ -394,17 +397,35 @@ const DICT = {
       limitTimelapseNote: 'Archive capacity: {count} / {max}',
       weeklyVlogBtn: 'Weekly HD Vlog (Pro)',
       hdExportBtn: 'Export HD Video',
+      watchAdPassBtn: 'Watch Short Ad → +1 HD Pass',
+      passBalance: 'HD Passes: {count}',
+      passGrantedMsg: 'Unlocked +1 HD Craft Pass! Use it on any HD Timelapse or Weekly Vlog export.',
+      passUsedMsg: 'Used 1 HD Craft Pass for 720p HD export!',
+      adNotReadyMsg: 'Ad is loading. Please try again in a few seconds.',
+      adWebNotice: 'Rewarded video ads activate inside the Google Play Android build.',
       themes: {
         emerald: 'Classic Emerald',
         midnight: 'Midnight Slate',
         gilded: 'Gilded Guild',
         sakura: 'Sakura Archive'
       }
+    },
+    duel: {
+      title: 'Guild Duel Arena',
+      copyCode: 'My Duel Code',
+      pasteCode: 'Paste friend CGD1:... code',
+      fightBtn: '⚔️ Auto-Battle',
+      fightingBtn: '⚔️ Clashing…',
+      vsFriend: 'Friend Code',
+      victory: 'VICTORY!',
+      defeat: 'DEFEAT',
+      ready: 'READY',
+      invalidCode: 'Invalid CGD1 Duel Code.'
     }
   },
   ja: {
     appName: 'Craft Glass',
-    tagline: 'AIに代替できない「本物の努力の証跡」',
+    tagline: '週間習慣・学習RPG',
     tabs: {
       pool: '週間プール',
       focus: '集中する',
@@ -760,11 +781,14 @@ const DICT = {
       title: 'Craft Pro',
       badge: '✨ Pro',
       badgeActive: '★ Pro',
-      subtitle: 'タイムラプス長期保管・HD書き出し・限定Proofデザインを解放。広告なし・Pay-to-Win禁止。',
+      subtitle: '広告を完全非表示にし、タイムラプス長期保管・HD書き出し・限定Proofデザインを解放。Pay-to-Win禁止。',
       pledgeTitle: '努力の公正性を守る誓い',
       pledgeBody: 'Craft ProではEXP・クラフトpt・ギルド称号・生身の祝福を一切販売しません。強さや努力は買えない設計です。',
       freeCol: '無料プラン',
       proCol: 'Craft Pro',
+      featureAds: '広告表示',
+      featureAdsFree: '控えめな下部バナー（集中中は非表示）',
+      featureAdsPro: '広告を完全非表示',
       featureTimelapse: 'タイムラプス保管・動画',
       featureTimelapseFree: '直近3本（360p標準）',
       featureTimelapsePro: '最大60本＋720p HD＆週間まとめVlog',
@@ -793,20 +817,37 @@ const DICT = {
       limitTimelapseNote: '保存枠: {count} / {max} 本',
       weeklyVlogBtn: '週間HDまとめVlog (Pro)',
       hdExportBtn: 'HD動画で書き出し',
+      watchAdPassBtn: '短い広告を見て +1 HDパス獲得',
+      passBalance: 'HDパス残高: {count}回',
+      passGrantedMsg: 'HDクラフトパスを1回分獲得しました！HD書き出し・週間Vlogに使えます。',
+      passUsedMsg: 'HDクラフトパスを1回消費して720p HD書き出しを実行しました！',
+      adNotReadyMsg: '広告を読み込み中です。数秒後にもう一度お試しください。',
+      adWebNotice: '動画リワード広告はGoogle Play配信のAndroid版で有効になります。',
       themes: {
         emerald: 'クラシック深緑',
         midnight: 'ミッドナイト石盤',
         gilded: '黄金ギルド',
         sakura: '桜アーカイブ'
       }
+    },
+    duel: {
+      title: 'ギルド自動対戦',
+      copyCode: '対戦コード取得',
+      pasteCode: '友人の CGD1:... コードを貼付',
+      fightBtn: '⚔️ 自動バトル開始',
+      fightingBtn: '⚔️ 対戦中…',
+      vsFriend: '友人コード',
+      victory: 'VICTORY!',
+      defeat: 'DEFEAT',
+      ready: 'READY',
+      invalidCode: '無効な CGD1 対戦コードです。'
     }
   }
 };
 
 export function detectLocale(preferred) {
   if (preferred && SUPPORTED_LOCALES.includes(preferred)) return preferred;
-  const navLang = (globalThis.navigator?.language || globalThis.Intl?.DateTimeFormat?.().resolvedOptions?.().locale || 'en').toLowerCase();
-  return navLang.startsWith('ja') ? 'ja' : 'en';
+  return 'en';
 }
 
 export function getDictionary(locale = 'en') {
