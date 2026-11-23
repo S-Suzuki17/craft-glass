@@ -3,7 +3,7 @@
 - **Package Name**: `com.craftglass.app`
 - **Version**: `1.0.0` (`versionCode: 1`)
 - **Default Language**: English (United States) — `en-US`
-- **App Type**: App (Free, No Ads, No In-App Purchases)
+- **App Type**: App (Free with optional Craft Pro In-App Purchases, No Ads)
 - **Category**: Productivity (or Education)
 - **Privacy Policy URL**: `https://s-suzuki17.github.io/craft-glass/privacy.html`
 
@@ -75,6 +75,15 @@ AIで誰でも一瞬でアプリや連続達成画面を作れる時代だから
 - **Content Rating (IARC)**: Productivity / Habit Tracker, mild stylized pixel-art fantasy companions/monsters, no realistic violence, no gambling, no user-generated public chat/servers, no location sharing -> **Everyone / 3+**.
 - **Target Audience**: 13–15, 16–17, and 18+ (or 16+ / 18+ to ensure non-children-directed streamlined review while global teens & adults can install).
 - **News / COVID-19 / Government / Financial / Health**: All **No** (general productivity, study & habit tool).
+
+---
+
+## Google Play Billing SKUs (Register under `Monetize → Products` after AAB Upload)
+- **Subscriptions (`サブスクリプション`)**:
+  - `craft_pro_yearly` — Suggested price: `$19.99 / year` (`¥2,900 / 年`)
+  - `craft_pro_monthly` — Suggested price: `$2.99 / month` (`¥480 / 月`)
+- **In-app product (`アプリ内アイテム` / 買い切り)**:
+  - `craft_pro_lifetime` — Suggested price: `$39.99` (`¥5,800`)
 
 ---
 

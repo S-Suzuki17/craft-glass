@@ -2,6 +2,7 @@
 
 import { getWeekDates } from '../core/weekly-pool.js';
 import { calcGuildLevel, calcTotalFocusSeconds } from '../core/rpg-engine.js';
+import { PROOF_CARD_THEMES, isProActive } from '../core/pro-entitlements.js';
 import { t, formatMinutes } from '../core/i18n.js';
 import { loadImage } from './pixel-renderer.js';
 
@@ -12,8 +13,11 @@ export async function generateProofCardBlob({
   displayName = '',
   note = '',
   timelapseFrames = [],
-  locale = 'en'
+  locale = 'en',
+  themeId = 'emerald'
 }) {
+  const pro = isProActive(state);
+  const chosen = PROOF_CARD_THEMES.find((th) => th.id === themeId && (!th.proOnly || pro)) || PROOF_CARD_THEMES[0];
   const width = 1080;
   const hasFrames = timelapseFrames.length > 0;
   const hasNote = Boolean(String(note || '').trim());
@@ -24,19 +28,19 @@ export async function generateProofCardBlob({
   canvas.height = height;
   const ctx = canvas.getContext('2d');
 
-  // Crisp White Backdrop + Subtle Emerald Accent Header
-  ctx.fillStyle = '#ffffff';
+  // Theme Backdrop + Header
+  ctx.fillStyle = chosen.cardBg;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.fillStyle = '#065f46';
+  ctx.fillStyle = chosen.headerBg;
   ctx.fillRect(0, 0, width, 168);
 
   // Header Brand & Proof Hash
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 42px system-ui, -apple-system, sans-serif';
-  ctx.fillText('Craft Glass', 56, 74);
+  ctx.fillText(pro ? 'Craft Glass ★ Patron' : 'Craft Glass', 56, 74);
   ctx.font = '600 22px system-ui, -apple-system, sans-serif';
-  ctx.fillStyle = '#a7f3d0';
+  ctx.fillStyle = chosen.subtext;
   ctx.fillText(t(locale, 'tagline'), 56, 114);
 
   const dates = getWeekDates(weekKey);
@@ -45,7 +49,7 @@ export async function generateProofCardBlob({
   ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
   ctx.fillText(`${dates[0]}  –  ${dates[6]}`, width - 56, 70);
   ctx.font = 'bold 20px ui-monospace, monospace';
-  ctx.fillStyle = '#fde68a';
+  ctx.fillStyle = chosen.hashColor;
   ctx.fillText(`#CG-${summary.proofHash.toUpperCase()}`, width - 56, 112);
   ctx.textAlign = 'left';
 
@@ -53,8 +57,8 @@ export async function generateProofCardBlob({
   const totalSec = calcTotalFocusSeconds(state.sessions);
   const rank = calcGuildLevel(totalSec, locale);
 
-  ctx.fillStyle = '#f0fdf4';
-  ctx.strokeStyle = '#bbf7d0';
+  ctx.fillStyle = chosen.bannerBg;
+  ctx.strokeStyle = chosen.bannerBorder;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.roundRect(56, 200, width - 112, 130, 22);
@@ -69,10 +73,10 @@ export async function generateProofCardBlob({
   }
 
   const labelName = String(displayName || '').trim() || (locale === 'ja' ? 'クラフト冒険者' : 'Craft Explorer');
-  ctx.fillStyle = '#064e3b';
+  ctx.fillStyle = chosen.headerBg;
   ctx.font = 'bold 34px system-ui, sans-serif';
   ctx.fillText(labelName, 200, 255);
-  ctx.fillStyle = '#047857';
+  ctx.fillStyle = chosen.accent;
   ctx.font = '600 23px system-ui, sans-serif';
   ctx.fillText(`Lv.${rank.level}  •  ${rank.rank} (${rank.rankTitle})`, 200, 298);
 
@@ -129,7 +133,7 @@ export async function generateProofCardBlob({
     const bh = Math.max(8, Math.round(ratio * 130));
     const bx = chartX + 44 + i * barStep + 14;
     const by = chartY + 168 - bh;
-    ctx.fillStyle = mins > 0 ? '#0f766e' : '#cbd5e1';
+    ctx.fillStyle = mins > 0 ? chosen.accent : '#cbd5e1';
     ctx.beginPath();
     ctx.roundRect(bx, by, 54, bh, 10);
     ctx.fill();
@@ -139,7 +143,7 @@ export async function generateProofCardBlob({
     ctx.font = '600 19px system-ui, sans-serif';
     ctx.fillText(dayLabels[i], bx + 27, chartY + 198);
     if (mins > 0) {
-      ctx.fillStyle = '#065f46';
+      ctx.fillStyle = chosen.headerBg;
       ctx.font = 'bold 18px system-ui, sans-serif';
       ctx.fillText(`${mins}m`, bx + 27, by - 10);
     }
@@ -173,12 +177,12 @@ export async function generateProofCardBlob({
       ctx.beginPath();
       ctx.roundRect(270, y + 4, 580, 20, 10);
       ctx.fill();
-      ctx.fillStyle = '#0f766e';
+      ctx.fillStyle = chosen.accent;
       ctx.beginPath();
       ctx.roundRect(270, y + 4, Math.max(14, Math.round((pct / 100) * 580)), 20, 10);
       ctx.fill();
       ctx.textAlign = 'right';
-      ctx.fillStyle = '#065f46';
+      ctx.fillStyle = chosen.headerBg;
       ctx.font = 'bold 20px system-ui, sans-serif';
       ctx.fillText(`${formatMinutes(locale, sec)} (${pct}%)`, width - 56, y + 20);
       ctx.textAlign = 'left';
@@ -208,11 +212,11 @@ export async function generateProofCardBlob({
   }
 
   if (hasNote) {
-    ctx.fillStyle = '#f0fdf4';
+    ctx.fillStyle = chosen.bannerBg;
     ctx.beginPath();
     ctx.roundRect(56, cursorY, width - 112, 86, 16);
     ctx.fill();
-    ctx.fillStyle = '#064e3b';
+    ctx.fillStyle = chosen.headerBg;
     ctx.font = '500 22px system-ui, sans-serif';
     ctx.fillText(`“${String(note).trim().slice(0, 72)}”`, 80, cursorY + 52);
   }
@@ -220,7 +224,11 @@ export async function generateProofCardBlob({
   // Footer
   ctx.fillStyle = '#64748b';
   ctx.font = '500 18px system-ui, sans-serif';
-  ctx.fillText('Craft Glass • Verified On-Device Ledger • Zero AI Hype', 56, height - 26);
+  ctx.fillText(
+    pro ? 'Verified On-Device Craft Ledger • Craft Patron Edition' : 'Craft Glass • Verified On-Device Ledger • Zero AI Hype',
+    56,
+    height - 26
+  );
 
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
 }

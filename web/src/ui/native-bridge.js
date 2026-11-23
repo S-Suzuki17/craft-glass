@@ -162,6 +162,60 @@ export function pushBackHandler(fn) {
   };
 }
 
+const billingListeners = new Set();
+
+export function onBillingUpdate(fn) {
+  if (typeof fn !== 'function') return () => {};
+  billingListeners.add(fn);
+  return () => billingListeners.delete(fn);
+}
+
+globalThis.window.__onCraftGlassBillingUpdate = (payload) => {
+  let data = payload;
+  if (typeof payload === 'string') {
+    try { data = JSON.parse(payload); } catch { return; }
+  }
+  for (const fn of billingListeners) {
+    try { fn(data); } catch {}
+  }
+};
+
+export function queryBillingProducts() {
+  if (isNativeAndroid() && typeof globalThis.window.CraftGlassNative.queryBillingProducts === 'function') {
+    try {
+      globalThis.window.CraftGlassNative.queryBillingProducts();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+export function purchaseProProduct(productId, productType = 'subs') {
+  if (isNativeAndroid() && typeof globalThis.window.CraftGlassNative.purchaseProduct === 'function') {
+    try {
+      globalThis.window.CraftGlassNative.purchaseProduct(String(productId), String(productType));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+export function restoreProPurchases() {
+  if (isNativeAndroid() && typeof globalThis.window.CraftGlassNative.restorePurchases === 'function') {
+    try {
+      globalThis.window.CraftGlassNative.restorePurchases();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 globalThis.window.__craftGlassBack = () => {
   while (backHandlers.length > 0) {
     const fn = backHandlers.pop();

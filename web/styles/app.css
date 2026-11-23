@@ -194,6 +194,28 @@ html, body {
   font-size: 0.82rem;
   cursor: pointer;
 }
+.pro-btn {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  border-color: #f59e0b;
+}
+.pro-btn.is-active {
+  background: linear-gradient(135deg, #065f46, #0f766e);
+  color: #fde68a;
+  border-color: #065f46;
+}
+.pro-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+  margin: 12px 0;
+}
+.pro-table th, .pro-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+.pro-table th { color: var(--emerald-dark); }
 
 .app-main {
   width: 100%;

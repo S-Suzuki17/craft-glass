@@ -23,7 +23,13 @@ export function createInitialState({ locale = detectLocale(), nowMs = Date.now()
       soundEnabled: true,
       reducedMotion: false,
       cameraBlur: 'soft', // 'off' | 'soft' | 'heavy'
-      ambientSound: 'off'
+      ambientSound: 'off',
+      proofTheme: 'emerald'
+    },
+    entitlement: {
+      isPro: false,
+      activeSku: null,
+      verifiedAt: null
     },
     profile: {
       displayName: locale === 'ja' ? 'クラフト冒険者' : 'Craft Explorer',
@@ -106,7 +112,8 @@ export function loadState() {
       ...parsed,
       settings: { ...base.settings, ...(parsed.settings || {}) },
       profile: { ...base.profile, ...(parsed.profile || {}) },
-      equipped: { ...base.equipped, ...(parsed.equipped || {}) }
+      equipped: { ...base.equipped, ...(parsed.equipped || {}) },
+      entitlement: { ...base.entitlement, ...(parsed.entitlement || {}) }
     };
   } catch {
     return createInitialState();
@@ -142,6 +149,7 @@ export function parseStateBackupJson(jsonText) {
     ...candidate,
     settings: { ...base.settings, ...(candidate.settings || {}) },
     profile: { ...base.profile, ...(candidate.profile || {}) },
-    equipped: { ...base.equipped, ...(candidate.equipped || {}) }
+    equipped: { ...base.equipped, ...(candidate.equipped || {}) },
+    entitlement: { ...base.entitlement, ...(candidate.entitlement || {}) }
   };
 }

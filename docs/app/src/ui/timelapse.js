@@ -2,7 +2,7 @@
 
 const DB_NAME = 'craft-glass-timelapse';
 const STORE_NAME = 'sessions';
-const MAX_SESSIONS = 15;
+const DEFAULT_MAX_SESSIONS = 3;
 const MAX_FRAMES_PER_SESSION = 180;
 const CAPTURE_INTERVAL_MS = 10_000;
 const FRAME_W = 384;
@@ -26,7 +26,8 @@ function openDb() {
   });
 }
 
-export async function saveTimelapseSession(record) {
+export async function saveTimelapseSession(record, { maxSessions = DEFAULT_MAX_SESSIONS } = {}) {
+  const limit = Math.max(1, Number(maxSessions) || DEFAULT_MAX_SESSIONS);
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -35,7 +36,7 @@ export async function saveTimelapseSession(record) {
     const getAllReq = store.getAll();
     getAllReq.onsuccess = () => {
       const all = (getAllReq.result || []).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
-      for (let i = MAX_SESSIONS; i < all.length; i++) {
+      for (let i = limit; i < all.length; i++) {
         store.delete(all[i].id);
       }
     };
@@ -193,16 +194,15 @@ export class DeskCameraRecorder {
   }
 }
 
-export async function exportTimelapseVideo(session) {
+export async function exportTimelapseVideo(session, { hd = false } = {}) {
   const frames = [...(session?.frames || [])].sort((a, b) => (a.at || 0) - (b.at || 0));
   if (frames.length === 0) throw new Error('No frames');
   const canvas = document.createElement('canvas');
-  canvas.width = 640;
-  canvas.height = 360;
+  canvas.width = hd ? 1280 : 640;
+  canvas.height = hd ? 720 : 360;
   const ctx = canvas.getContext('2d');
 
   if (typeof MediaRecorder === 'undefined' || !canvas.captureStream) {
-    // Graceful fallback: return first frame PNG
     const resp = await fetch(frames[0].dataUrl);
     return { blob: await resp.blob(), filename: `craft-glass-frame-${session.dayKey || 'timelapse'}.jpg` };
   }
@@ -219,6 +219,8 @@ export async function exportTimelapseVideo(session) {
     recorder.onstop = () => resolve(new Blob(chunks, { type: mime || 'video/webm' }));
   });
 
+  const barH = hd ? 44 : 28;
+  const barW = hd ? 360 : 220;
   recorder.start();
   for (let i = 0; i < frames.length; i++) {
     const img = await new Promise((res) => {
@@ -229,15 +231,70 @@ export async function exportTimelapseVideo(session) {
     });
     if (img) {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = 'rgba(6, 78, 59, 0.72)';
-      ctx.fillRect(16, canvas.height - 42, 220, 28);
+      ctx.fillStyle = 'rgba(6, 78, 59, 0.78)';
+      ctx.fillRect(16, canvas.height - barH - 14, barW, barH);
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 14px system-ui, sans-serif';
-      ctx.fillText(`Craft Glass • ${session.dayKey || ''} (${i + 1}/${frames.length})`, 24, canvas.height - 23);
+      ctx.font = `bold ${hd ? 20 : 14}px system-ui, sans-serif`;
+      ctx.fillText(`Craft Glass${hd ? ' HD' : ''} • ${session.dayKey || ''} (${i + 1}/${frames.length})`, 26, canvas.height - (hd ? 28 : 22));
     }
     await new Promise((r) => setTimeout(r, 110));
   }
   recorder.stop();
   const blob = await done;
-  return { blob, filename: `craft-glass-timelapse-${session.dayKey || Date.now()}.webm` };
+  return { blob, filename: `craft-glass-timelapse-${hd ? 'hd-' : ''}${session.dayKey || Date.now()}.webm` };
+}
+
+export async function exportWeeklyVlogVideo(sessions = [], weekKey = '') {
+  const orderedSessions = [...(sessions || [])].sort((a, b) => (a.startedAt || 0) - (b.startedAt || 0));
+  const merged = [];
+  for (const s of orderedSessions) {
+    const sortedFrames = [...(s.frames || [])].sort((a, b) => (a.at || 0) - (b.at || 0));
+    for (const f of sortedFrames) {
+      merged.push({ ...f, dayKey: s.dayKey, category: s.category });
+    }
+  }
+  if (merged.length === 0) throw new Error('No frames');
+  const canvas = document.createElement('canvas');
+  canvas.width = 1280;
+  canvas.height = 720;
+  const ctx = canvas.getContext('2d');
+
+  if (typeof MediaRecorder === 'undefined' || !canvas.captureStream) {
+    const resp = await fetch(merged[0].dataUrl);
+    return { blob: await resp.blob(), filename: `craft-glass-vlog-${weekKey || 'week'}.jpg` };
+  }
+
+  const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find((m) =>
+    MediaRecorder.isTypeSupported(m)
+  ) || '';
+  const stream = canvas.captureStream(12);
+  const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+  const chunks = [];
+  recorder.ondataavailable = (e) => { if (e.data?.size) chunks.push(e.data); };
+  const done = new Promise((resolve) => {
+    recorder.onstop = () => resolve(new Blob(chunks, { type: mime || 'video/webm' }));
+  });
+
+  recorder.start();
+  for (let i = 0; i < merged.length; i++) {
+    const item = merged[i];
+    const img = await new Promise((res) => {
+      const el = new Image();
+      el.onload = () => res(el);
+      el.onerror = () => res(null);
+      el.src = item.dataUrl;
+    });
+    if (img) {
+      ctx.drawImage(img, 0, 0, 1280, 720);
+      ctx.fillStyle = 'rgba(6, 78, 59, 0.8)';
+      ctx.fillRect(24, 720 - 62, 440, 42);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 20px system-ui, sans-serif';
+      ctx.fillText(`Craft Glass Weekly Vlog • ${item.dayKey || weekKey} (${i + 1}/${merged.length})`, 36, 720 - 34);
+    }
+    await new Promise((r) => setTimeout(r, 95));
+  }
+  recorder.stop();
+  const blob = await done;
+  return { blob, filename: `craft-glass-weekly-vlog-${weekKey || Date.now()}.webm` };
 }

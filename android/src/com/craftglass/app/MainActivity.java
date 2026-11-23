@@ -47,6 +47,7 @@ public final class MainActivity extends Activity {
     private static final int REQ_FILE_CHOOSER = 1002;
 
     private WebView webView;
+    private BillingManager billingManager;
     private PermissionRequest pendingPermissionRequest;
     private ValueCallback<Uri[]> filePathCallback;
 
@@ -101,6 +102,13 @@ public final class MainActivity extends Activity {
         settings.setSupportZoom(false);
 
         webView.addJavascriptInterface(new NativeBridge(), "CraftGlassNative");
+        billingManager = new BillingManager(this, jsonPayload -> {
+            if (webView != null) {
+                String js = "typeof window.__onCraftGlassBillingUpdate==='function'&&window.__onCraftGlassBillingUpdate("
+                        + org.json.JSONObject.quote(jsonPayload) + ");";
+                webView.post(() -> webView.evaluateJavascript(js, null));
+            }
+        });
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -232,6 +240,15 @@ public final class MainActivity extends Activity {
     }
 
     @Override
+    protected void onDestroy() {
+        if (billingManager != null) {
+            billingManager.destroy();
+            billingManager = null;
+        }
+        super.onDestroy();
+    }
+
+    @Override
     public void onBackPressed() {
         if (webView != null) {
             webView.evaluateJavascript(
@@ -352,6 +369,27 @@ public final class MainActivity extends Activity {
                 return true;
             } catch (Exception e) {
                 return false;
+            }
+        }
+
+        @JavascriptInterface
+        public void queryBillingProducts() {
+            if (billingManager != null) {
+                billingManager.queryAllProducts();
+            }
+        }
+
+        @JavascriptInterface
+        public void purchaseProduct(final String productId, final String productType) {
+            if (billingManager != null) {
+                runOnUiThread(() -> billingManager.launchPurchase(MainActivity.this, productId, productType));
+            }
+        }
+
+        @JavascriptInterface
+        public void restorePurchases() {
+            if (billingManager != null) {
+                billingManager.restorePurchases();
             }
         }
 

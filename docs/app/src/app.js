@@ -62,6 +62,16 @@ import {
   parseStateBackupJson
 } from './core/storage.js';
 
+import {
+  PRO_SKUS,
+  PROOF_CARD_THEMES,
+  isProActive,
+  getPlanLimits,
+  canAddFsrsCard,
+  canUseProofTheme,
+  getAvailableRoomIds,
+  applyBillingEntitlement
+} from './core/pro-entitlements.js';
 import { soundEngine } from './ui/audio.js';
 import { startSceneRenderer, renderStaticSpriteThumb } from './ui/pixel-renderer.js';
 import {
@@ -70,16 +80,22 @@ import {
   listTimelapseSessions,
   getTimelapseSession,
   deleteTimelapseSession,
-  exportTimelapseVideo
+  exportTimelapseVideo,
+  exportWeeklyVlogVideo
 } from './ui/timelapse.js';
 import { generateProofCardBlob } from './ui/proof-card.js';
 import {
+  isNativeAndroid,
   setKeepScreenOn,
   vibrate,
   shareText,
   saveBlobFile,
   shareBlobFile,
-  pushBackHandler
+  pushBackHandler,
+  onBillingUpdate,
+  queryBillingProducts,
+  purchaseProProduct,
+  restoreProPurchases
 } from './ui/native-bridge.js';
 
 const ACTIVE_TIMER_KEY = 'craft-glass-active-timer-v1';
@@ -101,6 +117,7 @@ let inspectedPact = null;
 let selectedStampKey = BLESSING_STAMPS[0].key;
 let activeDialogClose = null;
 let cachedTimelapses = [];
+let billingCatalog = {};
 
 const cameraRecorder = new DeskCameraRecorder();
 
@@ -218,6 +235,13 @@ function renderChrome() {
     blessPill.innerHTML = `<img src="${esc(blessing.stampSrc)}" width="18" height="18" alt=""><span>${esc(blessing.title)} (${blessing.remainingDays}d)</span>`;
   } else {
     blessPill.hidden = true;
+  }
+
+  const proBtn = document.getElementById('pro-open-btn');
+  if (proBtn) {
+    const pro = isProActive(state);
+    proBtn.textContent = t(loc, pro ? 'pro.badgeActive' : 'pro.badge');
+    proBtn.classList.toggle('is-active', pro);
   }
 
   const tabs = [
@@ -552,7 +576,8 @@ function renderFocusTab(main) {
   const wk = weekKeyNow();
   const weekPools = (state.pools || []).filter((p) => p.weekKey === wk);
   const activePending = getActivePendingGems(state);
-  const ownedRooms = ROOMS.filter((r) => (state.ownedRooms || ['mint', 'forest']).includes(r.id));
+  const allowedIds = new Set(getAvailableRoomIds(state, ROOMS));
+  const ownedRooms = ROOMS.filter((r) => allowedIds.has(r.id));
   const currentRoom = ROOMS.find((r) => r.id === state.activeRoom) || ROOMS[0];
   const blessing = getActiveBlessing(state, loc);
   const totalSec = calcTotalFocusSeconds(state.sessions);
@@ -822,7 +847,7 @@ async function finishFocusSession() {
       startedAt,
       seconds: elapsedSec,
       frames: capturedFrames
-    }).catch(() => { timelapseId = null; });
+    }, { maxSessions: getPlanLimits(state).maxTimelapses }).catch(() => { timelapseId = null; });
   }
 
   const session = {
@@ -1187,6 +1212,10 @@ function renderGuildTab(main) {
 
 function openFsrsAddDialog() {
   const loc = locale();
+  if (!canAddFsrsCard(state)) {
+    openCraftProDialog(t(loc, 'pro.limitFsrsTitle'));
+    return;
+  }
   openDialog(`
     <div class="card-head">
       <h2>${esc(t(loc, 'fsrs.newCard'))}</h2>
@@ -1285,6 +1314,9 @@ function openFsrsReviewDialog() {
 function renderProofTab(main) {
   const loc = locale();
   const wk = weekKeyNow();
+  const pro = isProActive(state);
+  const limits = getPlanLimits(state);
+  const activeTheme = canUseProofTheme(state, state.settings?.proofTheme) ? state.settings.proofTheme : 'emerald';
   const activeBlessing = getActiveBlessing(state, loc);
   const recentLedger = (state.proofLedger || []).slice(-6).reverse();
 
@@ -1295,8 +1327,20 @@ function renderProofTab(main) {
     </header>
 
     <section class="card glass">
-      <div class="card-head"><h2>🖼️ ${esc(t(loc, 'proof.cardTitle'))}</h2></div>
+      <div class="card-head">
+        <h2>🖼️ ${esc(t(loc, 'proof.cardTitle'))}</h2>
+        ${pro ? `<span class="pill-badge">${esc(t(loc, 'pro.badgeActive'))}</span>` : ''}
+      </div>
       <p class="muted">${esc(t(loc, 'proof.cardDesc'))}</p>
+      <div class="field">
+        <label>${esc(t(loc, 'pro.featureProof'))}</label>
+        <div class="chip-row">
+          ${PROOF_CARD_THEMES.map((th) => {
+            const locked = th.proOnly && !pro;
+            return `<button type="button" class="chip-btn${activeTheme === th.id ? ' active' : ''}" data-proof-theme="${esc(th.id)}">${locked ? '🔒 ' : ''}${esc(t(loc, `pro.themes.${th.id}`))}</button>`;
+          }).join('')}
+        </div>
+      </div>
       <div class="grid-2">
         <div class="field">
           <label for="proof-display-name">${esc(t(loc, 'proof.displayNameLabel'))}</label>
@@ -1378,7 +1422,13 @@ function renderProofTab(main) {
     </section>
 
     <section class="card glass">
-      <div class="card-head"><h2>🎬 ${esc(t(loc, 'proof.timelapseTitle'))}</h2></div>
+      <div class="card-head">
+        <h2>🎬 ${esc(t(loc, 'proof.timelapseTitle'))}</h2>
+        <div class="chip-row">
+          <span class="pill-badge muted-pill">${esc(t(loc, 'pro.limitTimelapseNote', { count: cachedTimelapses.length, max: limits.maxTimelapses }))}</span>
+          <button type="button" id="weekly-vlog-btn" class="btn btn-gold btn-sm">${pro ? '' : '🔒 '}${esc(t(loc, 'pro.weeklyVlogBtn'))}</button>
+        </div>
+      </div>
       ${cachedTimelapses.length === 0 ? `<p class="muted">${esc(t(loc, 'proof.noTimelapses'))}</p>` : `
         <div class="grid-2">
           ${cachedTimelapses.map((tl) => `
@@ -1387,7 +1437,7 @@ function renderProofTab(main) {
               <p class="muted">${formatMinutes(loc, tl.seconds)} • ${(tl.frames || []).length} frames</p>
               <div class="chip-row">
                 <button type="button" class="btn btn-primary btn-sm" data-play-tl="${esc(tl.id)}">▶ ${esc(t(loc, 'proof.play'))}</button>
-                <button type="button" class="btn btn-secondary btn-sm" data-export-tl="${esc(tl.id)}">⬇ ${esc(t(loc, 'proof.exportWebm'))}</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-export-tl="${esc(tl.id)}">⬇ ${esc(pro ? t(loc, 'pro.hdExportBtn') : t(loc, 'proof.exportWebm'))}</button>
                 <button type="button" class="btn btn-danger btn-sm" data-del-tl="${esc(tl.id)}">✕</button>
               </div>
             </div>
@@ -1409,12 +1459,46 @@ function renderProofTab(main) {
     </section>
   `;
 
+  main.querySelectorAll('[data-proof-theme]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tid = btn.dataset.proofTheme;
+      if (!canUseProofTheme(state, tid)) {
+        openCraftProDialog();
+        return;
+      }
+      setState((prev) => ({ ...prev, settings: { ...prev.settings, proofTheme: tid } }));
+    });
+  });
+
+  document.getElementById('weekly-vlog-btn')?.addEventListener('click', async () => {
+    if (!pro) {
+      openCraftProDialog();
+      return;
+    }
+    const weekSessions = cachedTimelapses.filter((tl) => tl.weekKey === wk);
+    if (weekSessions.length === 0) {
+      showToast(t(loc, 'proof.noTimelapses'));
+      return;
+    }
+    const out = await exportWeeklyVlogVideo(weekSessions, wk);
+    await saveBlobFile(out.filename, out.blob);
+  });
+
   document.getElementById('gen-proof-card-btn').onclick = async () => {
     const displayName = document.getElementById('proof-display-name').value.trim();
     const note = document.getElementById('proof-note').value.trim();
     const summary = await buildWeeklyProofSummary(state, wk);
     const frames = cachedTimelapses.filter((tl) => tl.weekKey === wk).flatMap((tl) => tl.frames || []).slice(0, 4);
-    const blob = await generateProofCardBlob({ state, weekKey: wk, summary, displayName, note, timelapseFrames: frames, locale: loc });
+    const blob = await generateProofCardBlob({
+      state,
+      weekKey: wk,
+      summary,
+      displayName,
+      note,
+      timelapseFrames: frames,
+      locale: loc,
+      themeId: activeTheme
+    });
     if (lastProofUrl) URL.revokeObjectURL(lastProofUrl);
     lastProofBlob = blob;
     lastProofUrl = URL.createObjectURL(blob);
@@ -1507,7 +1591,7 @@ function renderProofTab(main) {
     b.addEventListener('click', async () => {
       const tl = await getTimelapseSession(b.dataset.exportTl);
       if (!tl?.frames?.length) return;
-      const out = await exportTimelapseVideo(tl);
+      const out = await exportTimelapseVideo(tl, { hd: limits.hdExport });
       await saveBlobFile(out.filename, out.blob);
     });
   });
@@ -1734,6 +1818,92 @@ function renderInsightsTab(main) {
   document.getElementById('open-guide-link').onclick = openGuideDialog;
 }
 
+function openCraftProDialog(noticeMsg = '') {
+  const loc = locale();
+  const pro = isProActive(state);
+  if (isNativeAndroid()) queryBillingProducts();
+
+  openDialog(`
+    <div class="card-head">
+      <h2>✨ ${esc(t(loc, 'pro.title'))}</h2>
+      <button type="button" class="icon-btn" id="pro-dlg-close">✕</button>
+    </div>
+    ${noticeMsg ? `<p class="pill-badge" style="margin-bottom:10px">${esc(noticeMsg)}</p>` : ''}
+    <p class="muted">${esc(t(loc, 'pro.subtitle'))}</p>
+    <div class="card" style="background:#f0fdf4;margin:10px 0">
+      <strong>🛡️ ${esc(t(loc, 'pro.pledgeTitle'))}</strong>
+      <p class="muted" style="margin:4px 0 0">${esc(t(loc, 'pro.pledgeBody'))}</p>
+    </div>
+    <table class="pro-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>${esc(t(loc, 'pro.freeCol'))}</th>
+          <th>${esc(t(loc, 'pro.proCol'))}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>${esc(t(loc, 'pro.featureTimelapse'))}</strong></td>
+          <td>${esc(t(loc, 'pro.featureTimelapseFree'))}</td>
+          <td><strong>${esc(t(loc, 'pro.featureTimelapsePro'))}</strong></td>
+        </tr>
+        <tr>
+          <td><strong>${esc(t(loc, 'pro.featureProof'))}</strong></td>
+          <td>${esc(t(loc, 'pro.featureProofFree'))}</td>
+          <td><strong>${esc(t(loc, 'pro.featureProofPro'))}</strong></td>
+        </tr>
+        <tr>
+          <td><strong>${esc(t(loc, 'pro.featureFsrs'))}</strong></td>
+          <td>${esc(t(loc, 'pro.featureFsrsFree'))}</td>
+          <td><strong>${esc(t(loc, 'pro.featureFsrsPro'))}</strong></td>
+        </tr>
+        <tr>
+          <td><strong>${esc(t(loc, 'pro.featureRooms'))}</strong></td>
+          <td>${esc(t(loc, 'pro.featureRoomsFree'))}</td>
+          <td><strong>${esc(t(loc, 'pro.featureRoomsPro'))}</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    ${pro ? `
+      <div class="card" style="background:var(--gold-soft);text-align:center">
+        <strong>★ ${esc(t(loc, 'pro.unlockedMsg', { sku: state.entitlement?.activeSku || 'Craft Pro' }))}</strong>
+      </div>
+    ` : `
+      <div class="grid-3">
+        ${PRO_SKUS.map((sku) => {
+          const livePrice = billingCatalog[sku.id]?.price || (loc === 'ja' ? sku.fallbackJa : sku.fallbackEn);
+          return `
+            <div class="shop-item" style="border:${sku.bestValue ? '2px solid var(--gold)' : '1px solid var(--glass-border)'}">
+              ${sku.bestValue ? `<span class="pill-badge" style="background:var(--gold-soft);color:#92400e">${esc(t(loc, 'pro.bestValue'))}</span>` : ''}
+              <strong style="font-size:0.9rem">${esc(t(loc, `pro.skuNames.${sku.id}`))}</strong>
+              <span style="font-weight:800;color:var(--emerald-dark)">${esc(livePrice)}</span>
+              <button type="button" class="btn btn-primary btn-sm" data-buy-pro="${esc(sku.id)}" data-buy-type="${esc(sku.type)}">${esc(t(loc, 'pro.buyBtn'))}</button>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div class="chip-row" style="margin-top:12px;justify-content:space-between;align-items:center">
+        <button type="button" id="pro-restore-btn" class="btn btn-secondary btn-sm">${esc(t(loc, 'pro.restoreBtn'))}</button>
+        ${!isNativeAndroid() ? `<small class="muted">${esc(t(loc, 'pro.webNotice'))}</small>` : ''}
+      </div>
+    `}
+  `);
+
+  document.getElementById('pro-dlg-close').onclick = closeDialog;
+  document.querySelectorAll('[data-buy-pro]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const ok = purchaseProProduct(btn.dataset.buyPro, btn.dataset.buyType);
+      if (!ok) showToast(t(loc, 'pro.webNotice'));
+    });
+  });
+  document.getElementById('pro-restore-btn')?.addEventListener('click', () => {
+    const ok = restoreProPurchases();
+    if (!ok) showToast(t(loc, 'pro.webNotice'));
+  });
+}
+
 function openGuideDialog() {
   const loc = locale();
   const sections = t(loc, 'guide.sections');
@@ -1856,7 +2026,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
     });
   };
+  document.getElementById('pro-open-btn').onclick = () => openCraftProDialog();
   document.getElementById('guide-open-btn').onclick = openGuideDialog;
+
+  onBillingUpdate((payload) => {
+    if (!payload || typeof payload !== 'object') return;
+    if (Array.isArray(payload.products)) {
+      const map = {};
+      for (const p of payload.products) {
+        if (p?.productId) map[p.productId] = p;
+      }
+      billingCatalog = { ...billingCatalog, ...map };
+    }
+    const wasPro = isProActive(state);
+    if ('isPro' in payload) {
+      const next = applyBillingEntitlement(state, payload);
+      setState(next);
+      if (!wasPro && payload.isPro) {
+        soundEngine.play('clear');
+        showToast(t(locale(), 'pro.unlockedMsg', { sku: payload.activeSku || 'Craft Pro' }));
+        closeDialog();
+      } else if (payload.action === 'restore' && !payload.isPro) {
+        showToast(t(locale(), 'pro.noPurchaseFound'));
+      }
+    }
+  });
+  if (isNativeAndroid()) queryBillingProducts();
 
   cachedTimelapses = await listTimelapseSessions();
   renderAll();

@@ -356,6 +356,50 @@ const DICT = {
       citrine: { name: 'Sun Amber', mineral: 'Citrine' },
       sapphire: { name: 'Starlight Gem', mineral: 'Sapphire' },
       prism: { name: 'Dawn Star Relic', mineral: 'Prism Diamond' }
+    },
+    pro: {
+      title: 'Craft Pro',
+      badge: '✨ Pro',
+      badgeActive: '★ Pro',
+      subtitle: 'Expand your archive, HD timelapse exports, and gallery themes — zero ads, zero Pay-to-Win.',
+      pledgeTitle: 'Anti-Pay-to-Win Guarantee',
+      pledgeBody: 'Craft Pro NEVER sells EXP, Craft Points, Guild Ranks, or Human Blessings. Effort always stays honest.',
+      freeCol: 'Free',
+      proCol: 'Craft Pro',
+      featureTimelapse: 'Local Timelapse Vault',
+      featureTimelapseFree: 'Up to 3 sessions (360p)',
+      featureTimelapsePro: 'Up to 60 sessions + 720p HD & Weekly Vlog',
+      featureProof: 'Proof Card PNG Themes',
+      featureProofFree: 'Classic Emerald',
+      featureProofPro: '4 Themes + Patron Crest',
+      featureFsrs: 'FSRS Memory Forge',
+      featureFsrsFree: 'Up to 25 cards',
+      featureFsrsPro: 'Unlimited flashcards',
+      featureRooms: 'Study Room Backdrops',
+      featureRoomsFree: '2 starter + earnable',
+      featureRoomsPro: 'All 12 rooms unlocked',
+      bestValue: 'Best Value',
+      skuNames: {
+        craft_pro_yearly: 'Yearly Plan',
+        craft_pro_monthly: 'Monthly Plan',
+        craft_pro_lifetime: 'Lifetime Unlock'
+      },
+      buyBtn: 'Upgrade',
+      restoreBtn: 'Restore Purchases',
+      restoredMsg: 'Google Play purchase restored!',
+      noPurchaseFound: 'No active Craft Pro purchase found on Google Play.',
+      webNotice: 'In-app billing activates inside the Google Play Android build.',
+      unlockedMsg: 'Craft Pro is active ({sku})! Thank you for supporting honest craft.',
+      limitFsrsTitle: 'Free plan includes up to 25 FSRS cards. Upgrade to Craft Pro for unlimited cards.',
+      limitTimelapseNote: 'Archive capacity: {count} / {max}',
+      weeklyVlogBtn: 'Weekly HD Vlog (Pro)',
+      hdExportBtn: 'Export HD Video',
+      themes: {
+        emerald: 'Classic Emerald',
+        midnight: 'Midnight Slate',
+        gilded: 'Gilded Guild',
+        sakura: 'Sakura Archive'
+      }
     }
   },
   ja: {
@@ -711,6 +755,50 @@ const DICT = {
       citrine: { name: '太陽の琥珀', mineral: 'シトリン' },
       sapphire: { name: '星夜の輝石', mineral: 'サファイア' },
       prism: { name: '暁星の秘宝', mineral: 'プリズムダイヤ' }
+    },
+    pro: {
+      title: 'Craft Pro',
+      badge: '✨ Pro',
+      badgeActive: '★ Pro',
+      subtitle: 'タイムラプス長期保管・HD書き出し・限定Proofデザインを解放。広告なし・Pay-to-Win禁止。',
+      pledgeTitle: '努力の公正性を守る誓い',
+      pledgeBody: 'Craft ProではEXP・クラフトpt・ギルド称号・生身の祝福を一切販売しません。強さや努力は買えない設計です。',
+      freeCol: '無料プラン',
+      proCol: 'Craft Pro',
+      featureTimelapse: 'タイムラプス保管・動画',
+      featureTimelapseFree: '直近3本（360p標準）',
+      featureTimelapsePro: '最大60本＋720p HD＆週間まとめVlog',
+      featureProof: '証跡カード色',
+      featureProofFree: 'クラシック深緑（1種）',
+      featureProofPro: '全4テーマ＋パトロン紋章',
+      featureFsrs: 'FSRS 暗記カード上限',
+      featureFsrsFree: '25枚まで',
+      featureFsrsPro: '無制限に作成可能',
+      featureRooms: '自習室の背景テーマ',
+      featureRoomsFree: '初期2種＋努力pt解放',
+      featureRoomsPro: '全12テーマを即時解放',
+      bestValue: '一番人気',
+      skuNames: {
+        craft_pro_yearly: '年間プラン',
+        craft_pro_monthly: '月額プラン',
+        craft_pro_lifetime: '買い切り版'
+      },
+      buyBtn: '解放する',
+      restoreBtn: '購入内容を復元',
+      restoredMsg: 'Google Playの購入履歴を復元しました！',
+      noPurchaseFound: '有効なCraft Proの購入が見つかりませんでした。',
+      webNotice: 'アプリ内課金はGoogle Play配信のAndroid版で有効になります。',
+      unlockedMsg: 'Craft Pro 有効化済み（{sku}）！応援ありがとうございます。',
+      limitFsrsTitle: '無料プランのFSRSカードは25枚までです。Craft Proで無制限に作成できます。',
+      limitTimelapseNote: '保存枠: {count} / {max} 本',
+      weeklyVlogBtn: '週間HDまとめVlog (Pro)',
+      hdExportBtn: 'HD動画で書き出し',
+      themes: {
+        emerald: 'クラシック深緑',
+        midnight: 'ミッドナイト石盤',
+        gilded: '黄金ギルド',
+        sakura: '桜アーカイブ'
+      }
     }
   }
 };
