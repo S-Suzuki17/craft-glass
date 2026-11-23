@@ -100,7 +100,7 @@ async function resolveTree(group, artifact, version) {
   }
 }
 
-await resolveTree('com.android.billingclient', 'billing', '7.1.1');
+await resolveTree('com.android.billingclient', 'billing', '8.3.0');
 // Ensure Guava ListenableFuture (used by BillingClient futures / concurrent) is present if referenced
 await resolveTree('com.google.guava', 'listenablefuture', '1.0');
 
@@ -113,11 +113,14 @@ fs.mkdirSync(RES_DIR, { recursive: true });
 const packages = [];
 const resDirs = [];
 const jars = [];
+const expectedArtifacts = new Set();
 
 for (const item of resolved.values()) {
   const ext = item.packaging === 'aar' ? 'aar' : 'jar';
   const slug = `${item.group}__${item.artifact}`.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const filePath = path.join(ARTIFACTS_DIR, `${slug}-${item.version}.${ext}`);
+  const fileName = `${slug}-${item.version}.${ext}`;
+  expectedArtifacts.add(fileName);
+  const filePath = path.join(ARTIFACTS_DIR, fileName);
 
   if (!fs.existsSync(filePath)) {
     let buf = await fetchBuffer(`${item.repo}/${item.basePath}.${ext}`);
@@ -187,6 +190,13 @@ for (const item of resolved.values()) {
 }
 
 fs.rmSync(path.join(LIBS_DIR, 'tmp_extract'), { recursive: true, force: true });
+
+// Remove stale cached artifacts from older versions (e.g., billing-7.1.1.aar)
+for (const entry of fs.readdirSync(ARTIFACTS_DIR)) {
+  if (!expectedArtifacts.has(entry)) {
+    fs.rmSync(path.join(ARTIFACTS_DIR, entry), { force: true });
+  }
+}
 
 // Compute total footprint
 let totalBytes = 0;

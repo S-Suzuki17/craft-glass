@@ -60,17 +60,35 @@ public final class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false);
         }
-        window.setStatusBarColor(Color.TRANSPARENT);
-        window.setNavigationBarColor(Color.TRANSPARENT);
-        if (Build.VERSION.SDK_INT >= 23) {
-            View decor = window.getDecorView();
-            int flags = decor.getSystemUiVisibility();
-            decor.setSystemUiVisibility(flags | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        if (Build.VERSION.SDK_INT < 35) {
+            window.setStatusBarColor(Color.TRANSPARENT);
+            window.setNavigationBarColor(Color.TRANSPARENT);
         }
 
         webView = new WebView(this);
         webView.setBackgroundColor(Color.parseColor("#F4F9F6"));
         setContentView(webView);
+
+        if (Build.VERSION.SDK_INT >= 30) {
+            android.view.WindowInsetsController insetsController = window.getInsetsController();
+            if (insetsController != null) {
+                insetsController.setSystemBarsAppearance(
+                        android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+                        android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                );
+            }
+        } else if (Build.VERSION.SDK_INT >= 23) {
+            View decor = window.getDecorView();
+            int flags = decor.getSystemUiVisibility();
+            decor.setSystemUiVisibility(flags | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        }
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                    this::handleBackNavigation
+            );
+        }
 
         webView.setOnApplyWindowInsetsListener((v, insets) -> {
             int topPx = 0;
@@ -248,8 +266,7 @@ public final class MainActivity extends Activity {
         super.onDestroy();
     }
 
-    @Override
-    public void onBackPressed() {
+    private void handleBackNavigation() {
         if (webView != null) {
             webView.evaluateJavascript(
                     "typeof window.__craftGlassBack==='function'?window.__craftGlassBack():false",
@@ -257,14 +274,19 @@ public final class MainActivity extends Activity {
                         if (!"true".equals(value)) {
                             runOnUiThread(() -> {
                                 if (webView.canGoBack()) webView.goBack();
-                                else MainActivity.super.onBackPressed();
+                                else finish();
                             });
                         }
                     }
             );
             return;
         }
-        super.onBackPressed();
+        finish();
+    }
+
+    @Override
+    public void onBackPressed() {
+        handleBackNavigation();
     }
 
     private static String guessMime(String path) {

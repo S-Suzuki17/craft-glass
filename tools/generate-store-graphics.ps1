@@ -36,66 +36,28 @@ $heroIdle = Load-SpriteFrame 'heroes\boy-b-idle.png' 80
 $foxIdle = Load-SpriteFrame 'creatures\twigfox-idle.png' 80
 $crownImg = Load-SpriteFrame 'equipment\head-crown.png' 48
 $worldImg = [System.Drawing.Bitmap]::FromFile((Join-Path $webAssets 'worlds\world-01.png'))
+$iconMasterPath = Join-Path $storeDir 'icon-master-1024.png'
+if (-not (Test-Path $iconMasterPath)) {
+  throw "Missing icon master PNG: $iconMasterPath"
+}
+$iconMaster = [System.Drawing.Bitmap]::FromFile($iconMasterPath)
 
-# 1. Generate 512x512 App Icon (opaque, Play Store safe)
-function Render-AppIcon([string]$outPath, [int]$size, [bool]$isRound = $false, [bool]$foregroundOnly = $false) {
+# 1. Generate 512x512 App Icon, Android Adaptive Foreground, Mipmaps, and Web/PWA Icons
+function Render-AppIcon([string]$outPath, [int]$size, [bool]$isRound = $false) {
   $bmp = New-Object System.Drawing.Bitmap($size, $size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
   $g = [System.Drawing.Graphics]::FromImage($bmp)
   $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
   $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+  $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
 
-  if (-not $foregroundOnly) {
-    if ($isRound) {
-      $clipPath = New-Object System.Drawing.Drawing2D.GraphicsPath
-      $clipPath.AddEllipse(0, 0, $size, $size)
-      $g.SetClip($clipPath)
-    }
-    $bgBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
-      (New-Object System.Drawing.Point(0, 0)),
-      (New-Object System.Drawing.Point($size, $size)),
-      [System.Drawing.Color]::FromArgb(255, 6, 95, 70),
-      [System.Drawing.Color]::FromArgb(255, 15, 118, 110)
-    )
-    $g.FillRectangle($bgBrush, 0, 0, $size, $size)
-    $bgBrush.Dispose()
-
-    # Subtle glass highlight circle
-    $glowBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(36, 167, 243, 208))
-    $g.FillEllipse($glowBrush, [int](-$size * 0.1), [int](-$size * 0.15), [int]($size * 0.9), [int]($size * 0.9))
-    $glowBrush.Dispose()
-  } else {
-    $g.Clear([System.Drawing.Color]::Transparent)
+  if ($isRound) {
+    $clipPath = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $clipPath.AddEllipse(0, 0, $size, $size)
+    $g.SetClip($clipPath)
+    $clipPath.Dispose()
   }
 
-  # Liquid-glass rounded badge center
-  $pad = if ($foregroundOnly) { [int]($size * 0.20) } else { [int]($size * 0.11) }
-  $cardSize = $size - ($pad * 2)
-  $cardPath = New-RoundedRectPath $pad $pad $cardSize $cardSize ($cardSize * 0.24)
-  $cardFill = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(236, 244, 249, 246))
-  $cardBorder = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(220, 167, 243, 208), [Math]::Max(2, [int]($size * 0.015)))
-  $g.FillPath($cardFill, $cardPath)
-  $g.DrawPath($cardBorder, $cardPath)
-  $cardFill.Dispose()
-  $cardBorder.Dispose()
-
-  # Crisp pixel-art hero + companion inside the glass emblem
-  $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
-  $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::Half
-  $heroDraw = [int]($cardSize * 0.62)
-  $heroX = $pad + [int]($cardSize * 0.11)
-  $heroY = $pad + [int]($cardSize * 0.25)
-  $g.DrawImage($heroStudy, (New-Object System.Drawing.Rectangle($heroX, $heroY, $heroDraw, $heroDraw)))
-
-  $foxDraw = [int]($cardSize * 0.42)
-  $foxX = $pad + [int]($cardSize * 0.54)
-  $foxY = $pad + [int]($cardSize * 0.45)
-  $g.DrawImage($foxIdle, (New-Object System.Drawing.Rectangle($foxX, $foxY, $foxDraw, $foxDraw)))
-
-  # Golden Guild Crown crest at top-right of glass emblem
-  $crownDraw = [int]($cardSize * 0.25)
-  $crownX = $pad + [int]($cardSize * 0.64)
-  $crownY = $pad + [int]($cardSize * 0.12)
-  $g.DrawImage($crownImg, (New-Object System.Drawing.Rectangle($crownX, $crownY, $crownDraw, $crownDraw)))
+  $g.DrawImage($iconMaster, (New-Object System.Drawing.Rectangle(0, 0, $size, $size)))
 
   $g.Dispose()
   $dir = Split-Path $outPath -Parent
@@ -104,8 +66,10 @@ function Render-AppIcon([string]$outPath, [int]$size, [bool]$isRound = $false, [
   $bmp.Dispose()
 }
 
-Render-AppIcon (Join-Path $storeDir 'icon-512.png') 512 $false $false
-Render-AppIcon (Join-Path $resDir 'drawable\ic_launcher_foreground.png') 432 $false $true
+Render-AppIcon (Join-Path $storeDir 'icon-512.png') 512 $false
+Render-AppIcon (Join-Path $resDir 'drawable\ic_launcher_foreground.png') 432 $false
+Render-AppIcon (Join-Path $webAssets 'icon-192.png') 192 $false
+Render-AppIcon (Join-Path $webAssets 'icon-512.png') 512 $false
 
 $mipmaps = @{
   'mipmap-mdpi' = 48
@@ -116,9 +80,10 @@ $mipmaps = @{
 }
 foreach ($kv in $mipmaps.GetEnumerator()) {
   $mDir = Join-Path $resDir $kv.Key
-  Render-AppIcon (Join-Path $mDir 'ic_launcher.png') $kv.Value $false $false
-  Render-AppIcon (Join-Path $mDir 'ic_launcher_round.png') $kv.Value $true $false
+  Render-AppIcon (Join-Path $mDir 'ic_launcher.png') $kv.Value $false
+  Render-AppIcon (Join-Path $mDir 'ic_launcher_round.png') $kv.Value $true
 }
+$iconMaster.Dispose()
 
 # 2. Generate 1024x500 Feature Graphic
 $fw = 1024; $fh = 500
@@ -178,7 +143,7 @@ foreach ($text in $pills) {
   $px += $pw + 12
 }
 
-$fg.DrawString('Zero AI Hype  •  Zero Subscriptions  •  100% Yours', $pillFont, $goldBrush, 60, 385)
+$fg.DrawString('Zero AI Hype  •  Zero Ads  •  Zero Pay-to-Win', $pillFont, $goldBrush, 60, 385)
 
 $titleFont.Dispose(); $subFont.Dispose(); $bodyFont.Dispose(); $pillFont.Dispose()
 $whiteBrush.Dispose(); $mintBrush.Dispose(); $goldBrush.Dispose()

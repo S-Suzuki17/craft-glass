@@ -19,13 +19,14 @@ const JAVA = path.join(JAVA_BIN, 'java.exe');
 const JARSIGNER = path.join(JAVA_BIN, 'jarsigner.exe');
 
 const SDK_DIR = 'D:/Development/Android/Sdk';
-const ANDROID_JAR = path.join(SDK_DIR, 'platforms/android-35/android.jar');
-const BUILD_TOOLS = path.join(SDK_DIR, 'build-tools/35.0.0');
+const ANDROID_JAR = path.join(SDK_DIR, 'platforms/android-36/android.jar');
+const BUILD_TOOLS = path.join(SDK_DIR, 'build-tools/36.1.0');
 const AAPT2 = path.join(BUILD_TOOLS, 'aapt2.exe');
 const D8_JAR = path.join(BUILD_TOOLS, 'lib/d8.jar');
 const BUNDLETOOL_JAR = path.join(TOOLS_DIR, 'bundletool.jar');
 
-const AAB_OUT = path.join(DIST_DIR, 'craft-glass-1.0.0-vc1-release.aab');
+const AAB_OUT = path.join(DIST_DIR, 'craft-glass-1.0.1-vc2-release.aab');
+const OLD_AAB = path.join(DIST_DIR, 'craft-glass-1.0.0-vc1-release.aab');
 const APKS_OUT = path.join(BUILD_DIR, 'universal.apks');
 const APK_OUT = path.join(BUILD_DIR, 'universal.apk');
 
@@ -175,6 +176,7 @@ $dstFs.Dispose()
 run('powershell', ['-NoProfile', '-Command', assemblePs]);
 
 // 7. Build AAB with bundletool
+if (fs.existsSync(OLD_AAB)) fs.rmSync(OLD_AAB, { force: true });
 if (fs.existsSync(AAB_OUT)) fs.rmSync(AAB_OUT, { force: true });
 run(JAVA, [
   '-jar', BUNDLETOOL_JAR,

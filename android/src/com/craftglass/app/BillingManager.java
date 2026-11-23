@@ -12,6 +12,7 @@ import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.QueryProductDetailsParams;
+import com.android.billingclient.api.QueryProductDetailsResult;
 import com.android.billingclient.api.QueryPurchasesParams;
 
 import org.json.JSONArray;
@@ -24,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Google Play Billing Library 7.1.1 integration for Craft Pro subscriptions & one-time lifetime unlock.
+ * Google Play Billing Library 8.3.0 integration for Craft Pro subscriptions & one-time lifetime unlock.
  */
 public final class BillingManager {
     public interface Listener {
@@ -49,6 +50,7 @@ public final class BillingManager {
                 .build();
         this.client = BillingClient.newBuilder(context.getApplicationContext())
                 .enablePendingPurchases(pendingParams)
+                .enableAutoServiceReconnection()
                 .setListener((billingResult, purchases) -> {
                     if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK && purchases != null) {
                         handlePurchases(purchases, "purchase");
@@ -106,7 +108,8 @@ public final class BillingManager {
         QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
                 .setProductList(products)
                 .build();
-        client.queryProductDetailsAsync(params, (result, list) -> {
+        client.queryProductDetailsAsync(params, (result, queryResult) -> {
+            List<ProductDetails> list = queryResult != null ? queryResult.getProductDetailsList() : null;
             if (result.getResponseCode() == BillingClient.BillingResponseCode.OK && list != null) {
                 synchronized (productMap) {
                     for (ProductDetails pd : list) {
